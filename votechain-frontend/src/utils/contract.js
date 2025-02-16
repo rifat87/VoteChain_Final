@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 
-// Contract details
+// Contract details (ensure this matches your deployed contract)
 const CONTRACT_ADDRESS = "0x7f6575CC92465D24C1091a5b252a93f6a7Ff8108";
 const CONTRACT_ABI = [
   {
@@ -19,6 +19,34 @@ const CONTRACT_ABI = [
       {"internalType": "uint256", "name": "voteCount", "type": "uint256"}
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "string", "name": "_name", "type": "string"}],
+    "name": "registerCandidate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "_voter", "type": "address"}],
+    "name": "registerVoter",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint256", "name": "_candidateId", "type": "uint256"}],
+    "name": "castVote",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "endElection",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   }
 ];
