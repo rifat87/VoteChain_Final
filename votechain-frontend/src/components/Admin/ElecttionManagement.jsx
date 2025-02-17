@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { getContract } from "../utils/contract";
+import { getContract } from "../../utils/contract";
 
-const ElectionStatus = () => {
-  const [isEnded, setIsEnded] = useState(false);
+const ElectionManagement = () => {
+  const [electionEnded, setElectionEnded] = useState(false);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -10,7 +10,7 @@ const ElectionStatus = () => {
       try {
         const contract = await getContract();
         const status = await contract.electionEnded();
-        setIsEnded(status);
+        setElectionEnded(status);
       } catch (error) {
         console.error("Error fetching election status:", error);
       }
@@ -23,7 +23,7 @@ const ElectionStatus = () => {
       const contract = await getContract();
       const tx = await contract.endElection();
       await tx.wait();
-      setIsEnded(true);
+      setElectionEnded(true);
       setMessage("Election ended successfully!");
     } catch (error) {
       console.error("Error ending election:", error);
@@ -33,11 +33,11 @@ const ElectionStatus = () => {
 
   return (
     <div className="card">
-      <h2>Election Status</h2>
+      <h2>Election Management</h2>
       <p>
-        <strong>Election Ended:</strong> {isEnded ? "Yes" : "No"}
+        <strong>Election Ended:</strong> {electionEnded ? "Yes" : "No"}
       </p>
-      {!isEnded && (
+      {!electionEnded && (
         <button onClick={handleEndElection} className="button">
           End Election
         </button>
@@ -47,4 +47,4 @@ const ElectionStatus = () => {
   );
 };
 
-export default ElectionStatus;
+export default ElectionManagement;

@@ -1,11 +1,21 @@
 import React from "react";
-import Voting from "./components/Voting";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import HomePage from "./pages/HomePage";
+import AdminPage from "./pages/AdminPage";
+import VoterPage from "./pages/VoterPage";
 
 function App() {
   return (
-    <div className="container">
-      <Voting />
-    </div>
+    <Router>
+      <div>
+        {/* Optionally add a Navigation component here */}
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/voter" element={<VoterPage />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 

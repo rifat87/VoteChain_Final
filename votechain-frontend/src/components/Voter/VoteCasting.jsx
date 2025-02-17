@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { getContract } from "../utils/contract";
+import { getContract } from "../../utils/contract";
 
-const CastVote = () => {
+const VoteCasting = () => {
   const [candidateId, setCandidateId] = useState("");
   const [message, setMessage] = useState("");
 
-  const handleSubmit = async (e) => {
+  const handleCastVote = async (e) => {
     e.preventDefault();
     try {
       const contract = await getContract();
@@ -20,8 +20,8 @@ const CastVote = () => {
 
   return (
     <div className="card">
-      <h2>Cast Vote</h2>
-      <form onSubmit={handleSubmit}>
+      <h2>Cast Your Vote</h2>
+      <form onSubmit={handleCastVote}>
         <div>
           <label>Candidate ID:</label>
           <input
@@ -38,4 +38,4 @@ const CastVote = () => {
   );
 };
 
-export default CastVote;
+export default VoteCasting;

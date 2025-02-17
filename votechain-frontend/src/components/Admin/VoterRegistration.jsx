@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { getContract } from "../utils/contract";
+import { getContract } from "../../utils/contract";
 
 const VoterRegistration = () => {
   const [voterAddress, setVoterAddress] = useState("");
@@ -12,6 +12,7 @@ const VoterRegistration = () => {
       const tx = await contract.registerVoter(voterAddress);
       await tx.wait();
       setMessage("Voter registered successfully!");
+      setVoterAddress("");
     } catch (error) {
       console.error("Error registering voter:", error);
       setMessage("Failed to register voter.");
@@ -20,7 +21,7 @@ const VoterRegistration = () => {
 
   return (
     <div className="card">
-      <h2>Voter Registration</h2>
+      <h2>Register Voter</h2>
       <form onSubmit={handleSubmit}>
         <div>
           <label>Voter Address:</label>
