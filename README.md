@@ -68,3 +68,5 @@ $ cast --help
 =======
 # VoteChain
 >>>>>>> 9516111324571745f0da50ce418c29e730aa4c4f
+
+#fig
