@@ -1,8 +1,16 @@
 import { useState, useEffect } from "react"
+import { useWallet } from "@/components/ui/wallet-provider"
+import { useContract } from "@/hooks/useContract"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { useToast } from "@/components/ui/use-toast"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Loader2 } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { CandidateList } from "@/components/Dashboard/CandidateList"
 import { Badge } from "@/components/ui/badge"
 import { getContract } from "@/utils/contract"
-import { CandidateList } from "./CandidateList"
 
 export function PublicDashboard() {
   const [isElectionActive, setIsElectionActive] = useState(false)

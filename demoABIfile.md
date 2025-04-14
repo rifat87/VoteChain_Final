@@ -1,8 +1,21 @@
-// Contract address - replace with your deployed contract address
-export const contractAddress = "0x7f6575CC92465D24C1091a5b252a93f6a7Ff8108"
 
-// Contract ABI - replace with your contract's ABI
-export const contractABI = [
+
+
+
+
+
+
+
+
+-------------------------------------------------
+
+
+import { ethers } from "ethers";
+console.log("ethers:", ethers);
+
+// Contract details (ensure this matches your deployed contract)
+const CONTRACT_ADDRESS = "0x7f6575CC92465D24C1091a5b252a93f6a7Ff8108";
+const CONTRACT_ABI = [
   {
     "type": "constructor",
     "inputs": [],
@@ -196,5 +209,20 @@ export const contractABI = [
     ],
     "stateMutability": "view"
   }
-] 
- 
+];
+
+export const getContract = async () => {
+    if (typeof window !== "undefined" && window.ethereum) {
+      console.log("MetaMask found, setting up contract...");
+      // Using ethers v6
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+      console.log("Contract instance created successfully (v6)");
+      return contract;
+    } else {
+      console.error("MetaMask not found. Please install MetaMask.");
+      alert("MetaMask is required. Please install it and reload the page.");
+      throw new Error("MetaMask not found.");
+    }
+  };

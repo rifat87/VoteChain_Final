@@ -1,37 +1,37 @@
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom"
-import type { FC } from "react"
-import { Layout } from "@/components/Layout/Layout"
-import { PublicDashboard } from "@/components/Dashboard/PublicDashboard"
-import { Button } from "@/components/ui/button"
-import { ThemeProvider } from "@/components/theme-provider"
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
+import { ThemeProvider } from "@/components/ui/theme-provider"
+import { WalletProvider } from "@/components/ui/wallet-provider"
+import { Toaster } from "@/components/ui/toaster"
+import Dashboard from "@/pages/Dashboard"
+import { VoterDashboard } from "@/pages/VoterDashboard"
+import AdminDashboard from "@/pages/AdminDashboard"
+import { VoterRegistrationPage } from "@/pages/VoterRegistrationPage"
+import { RegisterCandidatePage } from "@/pages/RegisterCandidatePage"
+import { useRoleRedirect } from "@/hooks/useRoleRedirect"
 
-const Home: FC = () => {
+function AppRoutes() {
+  useRoleRedirect()
+  
   return (
-    <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] p-4">
-      <h1 className="text-4xl font-bold mb-4">Welcome to VoteChain</h1>
-      <p className="text-xl text-muted-foreground mb-8 text-center">
-        A secure and transparent blockchain-based voting system
-      </p>
-      <Link to="/dashboard">
-        <Button size="lg">Get Started</Button>
-      </Link>
-    </div>
+    <Routes>
+      <Route path="/" element={<Dashboard />} />
+      <Route path="/voter" element={<VoterDashboard />} />
+      <Route path="/admin" element={<AdminDashboard />} />
+      <Route path="/register" element={<VoterRegistrationPage />} />
+      <Route path="/admin/register-candidate" element={<RegisterCandidatePage />} />
+    </Routes>
   )
 }
 
-const App: FC = () => {
+export function App() {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
-      <BrowserRouter>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/dashboard" element={<PublicDashboard />} />
-          </Routes>
-        </Layout>
-      </BrowserRouter>
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+      <WalletProvider>
+        <Router>
+          <AppRoutes />
+          <Toaster />
+        </Router>
+      </WalletProvider>
     </ThemeProvider>
   )
 }
-
-export default App

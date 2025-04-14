@@ -1,37 +1,133 @@
-import { useState, useCallback } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { ethers } from 'ethers'
-import { getContract, Contract } from '@/utils/contract'
-
-interface ContractState {
-  isLoading: boolean
-  error: Error | null
-  contract: Contract | null
-}
+import { useWallet } from '@/components/ui/wallet-provider'
+import { contractAddress, contractABI } from '@/config/contract'
 
 export function useContract() {
-  const [state, setState] = useState<ContractState>({
-    isLoading: true,
-    error: null,
-    contract: null
-  })
+  const { provider, signer, isConnected } = useWallet()
+  const contractRef = useRef<ethers.Contract | null>(null)
 
-  const initializeContract = useCallback(async () => {
-    try {
-      setState(prev => ({ ...prev, isLoading: true, error: null }))
-      const contract = await getContract()
-      setState(prev => ({ ...prev, contract, isLoading: false }))
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        error: error instanceof Error ? error : new Error('Failed to initialize contract'),
-        isLoading: false
-      }))
+  const contract = useMemo(() => {
+    if (!isConnected || !provider || !signer) {
+      contractRef.current = null
+      return null
     }
-  }, [])
+
+    // Only create new contract instance if provider or signer changes
+    if (!contractRef.current || 
+        contractRef.current.provider !== provider || 
+        contractRef.current.signer !== signer) {
+      try {
+        contractRef.current = new ethers.Contract(contractAddress, contractABI, signer)
+      } catch (error) {
+        contractRef.current = null
+      }
+    }
+
+    return contractRef.current
+  }, [isConnected, provider, signer])
+
+  const getCandidates = useCallback(async () => {
+    if (!contract) return []
+
+    try {
+      const count = await contract.candidateCount()
+      console.log('Total candidates:', Number(count))
+      
+      const candidates = []
+      for (let i = 1; i <= Number(count); i++) {
+        try {
+          const candidate = await contract.getCandidate(i)
+          console.log(`Candidate ${i}:`, {
+            id: Number(candidate.id),
+            name: candidate.name,
+            voteCount: Number(candidate.voteCount)
+          })
+          
+          candidates.push({
+            id: Number(candidate.id),
+            name: candidate.name,
+            votes: Number(candidate.voteCount)
+          })
+        } catch (error) {
+          console.error(`Error fetching candidate ${i}:`, error)
+        }
+      }
+      
+      console.log('All candidates:', candidates)
+      return candidates
+    } catch (error) {
+      console.error('Error in getCandidates:', error)
+      return []
+    }
+  }, [contract])
+
+  const castVote = useCallback(async (candidateId: number) => {
+    if (!contract) {
+      throw new Error("Contract not initialized")
+    }
+
+    try {
+      const tx = await contract.castVote(candidateId)
+      await tx.wait()
+      return tx
+    } catch (error) {
+      console.error('Error casting vote:', error)
+      throw error
+    }
+  }, [contract])
+
+  const isAdmin = useCallback(async (address: string) => {
+    if (!contract) {
+      throw new Error("Contract not initialized")
+    }
+
+    try {
+      const commissionAddress = await contract.electionCommission()
+      return commissionAddress.toLowerCase() === address.toLowerCase()
+    } catch (error) {
+      console.error('Error checking admin status:', error)
+      throw error
+    }
+  }, [contract])
+
+  const registerVoter = useCallback(async (voterAddress: string) => {
+    if (!contract) {
+      throw new Error("Contract not initialized")
+    }
+
+    try {
+      const tx = await contract.registerVoter(voterAddress)
+      await tx.wait()
+      return tx
+    } catch (error) {
+      console.error('Error registering voter:', error)
+      throw error
+    }
+  }, [contract])
+
+  const registerCandidate = useCallback(async (name: string, party: string) => {
+    if (!contract) {
+      throw new Error("Contract not initialized")
+    }
+
+    try {
+      const tx = await contract.registerCandidate(name, party)
+      await tx.wait()
+      return tx
+    } catch (error) {
+      console.error('Error registering candidate:', error)
+      throw error
+    }
+  }, [contract])
 
   return {
-    ...state,
-    initializeContract
+    contract,
+    getCandidates,
+    castVote,
+    isAdmin,
+    registerVoter,
+    registerCandidate
   }
 }
 
@@ -86,7 +182,7 @@ export function useCandidates() {
       const contract = await getContract()
       const count = await contract.candidateCount()
       const candidatesData = await Promise.all(
-        Array.from({ length: Number(count) }, (_, i) => contract.getCandidate(i))
+        Array.from({ length: Number(count) }, (_, i) => contract.candidates(i))
       )
       setCandidates(candidatesData.map(c => ({
         id: Number(c.id),
@@ -130,21 +226,6 @@ export function useVoting() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
-  const castVote = useCallback(async (candidateId: number) => {
-    try {
-      setIsLoading(true)
-      setError(null)
-      const contract = await getContract()
-      const tx = await contract.castVote(candidateId)
-      await tx.wait()
-    } catch (error) {
-      setError(error instanceof Error ? error : new Error('Failed to cast vote'))
-      throw error
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
   const checkVotingStatus = useCallback(async (address: string) => {
     try {
       setIsLoading(true)
@@ -166,7 +247,6 @@ export function useVoting() {
   return {
     isLoading,
     error,
-    castVote,
     checkVotingStatus
   }
 } 

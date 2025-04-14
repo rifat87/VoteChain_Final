@@ -1,4 +1,3 @@
-import * as React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 
 type Theme = "dark" | "light" | "system"
@@ -33,6 +32,7 @@ export function ThemeProvider({
 
   useEffect(() => {
     const root = window.document.documentElement
+
     root.classList.remove("light", "dark")
 
     if (theme === "system") {
@@ -40,6 +40,7 @@ export function ThemeProvider({
         .matches
         ? "dark"
         : "light"
+
       root.classList.add(systemTheme)
       return
     }
