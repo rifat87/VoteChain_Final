@@ -1,4 +1,4 @@
-import { VoterRegistration } from "@/components/VoterRegistration"
+import { VoterRegistration } from "@/components/Admin/VoterRegistration"
 import { DashboardLayout } from "@/components/Layout/DashboardLayout"
 
 export function VoterRegistrationPage() {
