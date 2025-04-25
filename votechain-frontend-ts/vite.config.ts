@@ -11,8 +11,9 @@ export default defineConfig({
     },
   },
   server: {
+    port: 5273,
     headers: {
-      'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.ethers.org https://*.ethers.io wss://*.ethers.io;"
+      'Content-Security-Policy': "connect-src 'self' https://*.ethers.org https://*.ethers.io wss://*.ethers.io http://localhost:5000"
     }
   }
 })

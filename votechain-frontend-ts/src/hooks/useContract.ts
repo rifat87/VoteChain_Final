@@ -1,133 +1,162 @@
-import { useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { ethers } from 'ethers'
-import { useWallet } from '@/components/ui/wallet-provider'
-import { contractAddress, contractABI } from '@/config/contract'
+import { 
+  LOCAL_CONTRACT_ADDRESS,
+  LOCAL_CONTRACT_ABI,
+  createLocalContract,
+  getLocalProvider,
+  getLocalSigner
+} from '@/local/contracts/local-contract'
 
 export function useContract() {
-  const { provider, signer, isConnected } = useWallet()
-  const contractRef = useRef<ethers.Contract | null>(null)
+  const [contract, setContract] = useState<ethers.Contract | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const contract = useMemo(() => {
-    if (!isConnected || !provider || !signer) {
-      contractRef.current = null
-      return null
-    }
-
-    // Only create new contract instance if provider or signer changes
-    if (!contractRef.current || 
-        contractRef.current.provider !== provider || 
-        contractRef.current.signer !== signer) {
+  useEffect(() => {
+    async function initContract() {
       try {
-        contractRef.current = new ethers.Contract(contractAddress, contractABI, signer)
-      } catch (error) {
-        contractRef.current = null
-      }
-    }
-
-    return contractRef.current
-  }, [isConnected, provider, signer])
-
-  const getCandidates = useCallback(async () => {
-    if (!contract) return []
-
-    try {
-      const count = await contract.candidateCount()
-      console.log('Total candidates:', Number(count))
-      
-      const candidates = []
-      for (let i = 1; i <= Number(count); i++) {
-        try {
-          const candidate = await contract.getCandidate(i)
-          console.log(`Candidate ${i}:`, {
-            id: Number(candidate.id),
-            name: candidate.name,
-            voteCount: Number(candidate.voteCount)
-          })
-          
-          candidates.push({
-            id: Number(candidate.id),
-            name: candidate.name,
-            votes: Number(candidate.voteCount)
-          })
-        } catch (error) {
-          console.error(`Error fetching candidate ${i}:`, error)
+        if (!window.ethereum) {
+          throw new Error('MetaMask is not installed')
         }
+
+        // Initialize contract with signer for all operations
+        const provider = new ethers.BrowserProvider(window.ethereum)
+        const signer = await provider.getSigner()
+        const contract = createLocalContract(signer)
+        
+        setContract(contract)
+        setError(null)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to initialize contract')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    initContract()
+  }, [])
+
+  // Function to get contract with signer for transactions
+  const getContractWithSigner = async () => {
+    if (!window.ethereum) {
+      throw new Error('MetaMask is not installed')
+    }
+    const provider = new ethers.BrowserProvider(window.ethereum)
+    const signer = await provider.getSigner()
+    return createLocalContract(signer)
+  }
+
+  const getCandidates = async () => {
+    if (!contract) throw new Error('Contract not initialized')
+    return contract.getCandidates()
+  }
+
+  const castVote = async (candidateId: number) => {
+    const contractWithSigner = await getContractWithSigner()
+    const tx = await contractWithSigner.castVote(candidateId)
+    const receipt = await tx.wait()
+    if (!receipt || !receipt.transactionHash) {
+      throw new Error('Failed to get transaction hash from blockchain')
+    }
+    return receipt
+  }
+
+  const isAdmin = async (address: string) => {
+    if (!contract) throw new Error('Contract not initialized')
+    const commissionAddress = await contract.electionCommission()
+    return address.toLowerCase() === commissionAddress.toLowerCase()
+  }
+
+  const registerVoter = async (voterAddress: string) => {
+    const contractWithSigner = await getContractWithSigner()
+    const tx = await contractWithSigner.registerVoter(voterAddress)
+    const receipt = await tx.wait()
+    if (!receipt || !receipt.transactionHash) {
+      throw new Error('Failed to get transaction hash from blockchain')
+    }
+    return receipt
+  }
+
+  const registerCandidate = async (
+    name: string,
+    nationalId: string,
+    location: string
+  ) => {
+    try {
+      const contractWithSigner = await getContractWithSigner()
+      console.log('Sending transaction...')
+      const tx = await contractWithSigner.registerCandidate(
+        name,
+        nationalId,
+        location
+      )
+      console.log('Transaction sent:', tx.hash)
+      
+      console.log('Waiting for transaction to be mined...')
+      const receipt = await tx.wait()
+      console.log('Transaction mined:', receipt)
+      
+      if (!receipt || !receipt.hash) {
+        throw new Error('Failed to get transaction hash from blockchain')
       }
       
-      console.log('All candidates:', candidates)
-      return candidates
+      return receipt
     } catch (error) {
-      console.error('Error in getCandidates:', error)
-      return []
-    }
-  }, [contract])
-
-  const castVote = useCallback(async (candidateId: number) => {
-    if (!contract) {
-      throw new Error("Contract not initialized")
-    }
-
-    try {
-      const tx = await contract.castVote(candidateId)
-      await tx.wait()
-      return tx
-    } catch (error) {
-      console.error('Error casting vote:', error)
+      console.error('Error in registerCandidate:', error)
       throw error
     }
-  }, [contract])
+  }
 
-  const isAdmin = useCallback(async (address: string) => {
-    if (!contract) {
-      throw new Error("Contract not initialized")
+  const startElection = async () => {
+    const contractWithSigner = await getContractWithSigner()
+    const tx = await contractWithSigner.startElection()
+    const receipt = await tx.wait()
+    if (!receipt || !receipt.transactionHash) {
+      throw new Error('Failed to get transaction hash from blockchain')
     }
+    return receipt
+  }
 
-    try {
-      const commissionAddress = await contract.electionCommission()
-      return commissionAddress.toLowerCase() === address.toLowerCase()
-    } catch (error) {
-      console.error('Error checking admin status:', error)
-      throw error
+  const endElection = async () => {
+    const contractWithSigner = await getContractWithSigner()
+    const tx = await contractWithSigner.endElection()
+    const receipt = await tx.wait()
+    if (!receipt || !receipt.transactionHash) {
+      throw new Error('Failed to get transaction hash from blockchain')
     }
-  }, [contract])
+    return receipt
+  }
 
-  const registerVoter = useCallback(async (voterAddress: string) => {
-    if (!contract) {
-      throw new Error("Contract not initialized")
-    }
+  const isRegisteredVoter = async (address: string) => {
+    if (!contract) throw new Error('Contract not initialized')
+    return contract.isRegisteredVoter(address)
+  }
 
-    try {
-      const tx = await contract.registerVoter(voterAddress)
-      await tx.wait()
-      return tx
-    } catch (error) {
-      console.error('Error registering voter:', error)
-      throw error
-    }
-  }, [contract])
+  const isVoted = async (address: string) => {
+    if (!contract) throw new Error('Contract not initialized')
+    return contract.isVoted(address)
+  }
 
-  const registerCandidate = useCallback(async (name: string, party: string) => {
-    if (!contract) {
-      throw new Error("Contract not initialized")
-    }
-
-    try {
-      const tx = await contract.registerCandidate(name, party)
-      await tx.wait()
-      return tx
-    } catch (error) {
-      console.error('Error registering candidate:', error)
-      throw error
-    }
-  }, [contract])
+  const getVoteCount = async (candidateId: number) => {
+    if (!contract) throw new Error('Contract not initialized')
+    return contract.getVoteCount(candidateId)
+  }
 
   return {
     contract,
+    isLoading,
+    error,
     getCandidates,
     castVote,
     isAdmin,
     registerVoter,
-    registerCandidate
+    registerCandidate,
+    startElection,
+    endElection,
+    isRegisteredVoter,
+    isVoted,
+    getVoteCount,
   }
 }
 

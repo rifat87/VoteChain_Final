@@ -38,7 +38,7 @@ contract Voting {
         require(!hasVoted[msg.sender], "You have already voted");
         require(_candidateId > 0 && _candidateId <= candidateCount, "Invalid candidate");
 
-        hasVoted[msg.sender] = true;
+        hasVoted[msg.sender] = true; // hasVoted = 
         candidates[_candidateId].voteCount++;
     }
 
