@@ -25,6 +25,7 @@ const WalletContext = createContext<WalletContextType | undefined>(undefined)
 export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<WalletState>(initialState)
   const mountedRef = useRef(true)
+  const connectionRequested = useRef(false)
 
   useEffect(() => {
     mountedRef.current = true
@@ -42,16 +43,20 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       if (!mountedRef.current) return
 
       if (accounts.length === 0) {
-        await disconnect()
+        // User disconnected their wallet
+        setState(initialState)
       } else {
-        const provider = new BrowserProvider(window.ethereum)
-        const signer = await provider.getSigner()
-        setState({
-          isConnected: true,
-          address: accounts[0],
-          provider,
-          signer
-        })
+        // Only update state if we're already connected
+        if (state.isConnected) {
+          const provider = new BrowserProvider(window.ethereum)
+          const signer = await provider.getSigner()
+          setState({
+            isConnected: true,
+            address: accounts[0],
+            provider,
+            signer
+          })
+        }
       }
     }
 
@@ -60,17 +65,9 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       window.location.reload()
     }
 
+    // Set up event listeners
     window.ethereum.on('accountsChanged', handleAccountsChanged)
     window.ethereum.on('chainChanged', handleChainChanged)
-
-    // Check if already connected
-    window.ethereum.request({ method: 'eth_accounts' })
-      .then((accounts: string[]) => {
-        if (accounts.length > 0) {
-          handleAccountsChanged(accounts)
-        }
-      })
-      .catch(console.error)
 
     return () => {
       if (window.ethereum) {
@@ -78,47 +75,43 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         window.ethereum.removeListener('chainChanged', handleChainChanged)
       }
     }
-  }, [])
+  }, [state.isConnected])
 
   const connect = async () => {
     if (typeof window.ethereum === 'undefined') {
       throw new Error('MetaMask is not installed')
     }
 
+    // Prevent multiple simultaneous connection attempts
+    if (connectionRequested.current) {
+      return
+    }
+
     try {
+      connectionRequested.current = true
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
-      const provider = new BrowserProvider(window.ethereum)
-      const signer = await provider.getSigner()
-      
-      setState({
-        isConnected: true,
-        address: accounts[0],
-        provider,
-        signer
-      })
+      if (accounts.length > 0) {
+        const provider = new BrowserProvider(window.ethereum)
+        const signer = await provider.getSigner()
+        
+        setState({
+          isConnected: true,
+          address: accounts[0],
+          provider,
+          signer
+        })
+      }
     } catch (error) {
       console.error('Error connecting to MetaMask:', error)
       throw error
+    } finally {
+      connectionRequested.current = false
     }
   }
 
   const disconnect = async () => {
-    try {
-      // Request MetaMask to disconnect
-      await window.ethereum?.request({
-        method: 'wallet_revokePermissions',
-        params: [
-          {
-            eth_accounts: {}
-          }
-        ]
-      })
-    } catch (error) {
-      console.error('Error disconnecting from MetaMask:', error)
-    } finally {
-      // Reset local state regardless of MetaMask response
-      setState(initialState)
-    }
+    // Reset the local state
+    setState(initialState)
   }
 
   return (

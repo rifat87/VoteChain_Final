@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useContract } from "@/hooks/useContract"
+import { useLocalContract } from "@/local/hooks/useLocalContract"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -52,7 +52,7 @@ const formSchema = z.object({
 });
 
 export function RegisterCandidate() {
-  const { registerCandidate, isAdmin } = useContract()
+  const { registerCandidate, isAdmin } = useLocalContract()
   const [formData, setFormData] = useState<CandidateFormData>({
     nationalId: "",
     name: "",
@@ -132,8 +132,8 @@ export function RegisterCandidate() {
         formData.location
       );
       
-      if (!receipt || !receipt.hash) {
-        throw new Error('Failed to get transaction hash from blockchain');
+      if (!receipt) {
+        throw new Error('Failed to register candidate on blockchain');
       }
 
       // Format date to ISO string
@@ -158,7 +158,7 @@ export function RegisterCandidate() {
           location: formData.location.trim(),
           faceId: formData.faceId || "placeholder",
           fingerprint: formData.fingerprint || "placeholder",
-          blockchainId: receipt.hash // Using the transaction hash directly from the receipt
+          blockchainId: receipt // Using the transaction hash directly from the receipt
         }),
       });
 

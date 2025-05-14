@@ -1,20 +1,25 @@
-import { useState } from "react"
-import { useContract } from "@/hooks/useContract"
-import { useWallet } from "@/components/ui/wallet-provider"
+import { useEffect, useState } from "react"
+import { useLocalContract } from "@/local/hooks/useLocalContract"
+import { useLocalWallet } from "@/local/hooks/useLocalWallet"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { useNavigate } from "react-router-dom"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { toast } from "sonner"
+import { useToast } from "@/components/ui/use-toast"
 import { FaceCapture } from "@/components/Biometric/face-recognition/FaceCapture"
 import { FingerprintCapture } from "@/components/Biometric/fingerprint/FingerprintCapture"
 
 export function VoterRegistration() {
-  const { registerVoter } = useContract()
-  const { address } = useWallet()
-  const [nationalId, setNationalId] = useState("")
-  const [name, setName] = useState("")
-  const [physicalAddress, setPhysicalAddress] = useState("")
+  const navigate = useNavigate()
+  const { registerVoter } = useLocalContract()
+  const { address } = useLocalWallet()
+  const { toast } = useToast()
+  const [formData, setFormData] = useState({
+    name: "",
+    nationalId: "",
+    location: ""
+  })
   const [isLoading, setIsLoading] = useState(false)
   const [biometricStatus, setBiometricStatus] = useState({
     faceCaptured: false,
@@ -24,97 +29,107 @@ export function VoterRegistration() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!address) {
-      toast.error("Please connect your wallet first")
+      toast({
+        title: "Error",
+        description: "Please connect your wallet first",
+        variant: "destructive"
+      })
       return
     }
 
-    if (!nationalId.trim() || !name.trim() || !physicalAddress.trim()) {
-      toast.error("Please fill in all required fields")
+    if (!formData.nationalId.trim() || !formData.name.trim() || !formData.location.trim()) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      })
       return
     }
 
     if (!biometricStatus.faceCaptured || !biometricStatus.fingerprintCaptured) {
-      toast.error("Please complete biometric verification")
+      toast({
+        title: "Error",
+        description: "Please complete biometric verification",
+        variant: "destructive"
+      })
       return
     }
 
     setIsLoading(true)
     try {
-      await registerVoter(address)
-      toast.success("Voter registered successfully")
-      setNationalId("")
-      setName("")
-      setPhysicalAddress("")
-      setBiometricStatus({ faceCaptured: false, fingerprintCaptured: false })
-    } catch (error) {
-      console.error("Error registering voter:", error)
-      toast.error("Failed to register voter")
+      await registerVoter(formData.nationalId)
+      toast({
+        title: "Success",
+        description: "Voter registered successfully"
+      })
+      navigate("/admin")
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to register voter",
+        variant: "destructive"
+      })
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>Voter Registration</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-4">
+    <div className="container mx-auto p-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Register Voter</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                required
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="nationalId">National ID</Label>
               <Input
                 id="nationalId"
-                value={nationalId}
-                onChange={(e) => setNationalId(e.target.value)}
-                placeholder="Enter national ID"
+                value={formData.nationalId}
+                onChange={(e) => setFormData({ ...formData, nationalId: e.target.value })}
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
+              <Label htmlFor="location">Location</Label>
               <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter full name"
+                id="location"
+                value={formData.location}
+                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="physicalAddress">Physical Address</Label>
-              <Input
-                id="physicalAddress"
-                value={physicalAddress}
-                onChange={(e) => setPhysicalAddress(e.target.value)}
-                placeholder="Enter physical address"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Biometric Verification</Label>
-              <div className="grid gap-4 md:grid-cols-2">
-                <FaceCapture
-                  onCapture={() => setBiometricStatus(prev => ({ ...prev, faceCaptured: true }))}
-                  captured={biometricStatus.faceCaptured}
-                />
-                <FingerprintCapture
-                  onCapture={() => setBiometricStatus(prev => ({ ...prev, fingerprintCaptured: true }))}
-                  captured={biometricStatus.fingerprintCaptured}
-                />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Biometric Verification</Label>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FaceCapture
+                    onCapture={() => setBiometricStatus(prev => ({ ...prev, faceCaptured: true }))}
+                    captured={biometricStatus.faceCaptured}
+                  />
+                  <FingerprintCapture
+                    onCapture={() => setBiometricStatus(prev => ({ ...prev, fingerprintCaptured: true }))}
+                    captured={biometricStatus.fingerprintCaptured}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-
-          <Button type="submit" disabled={isLoading} className="w-full">
-            {isLoading ? "Registering..." : "Register Voter"}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Registering..." : "Register Voter"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   )
 } 

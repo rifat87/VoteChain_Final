@@ -1,129 +1,29 @@
 import { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
 
-interface WalletState {
-  provider: ethers.BrowserProvider | null;
-  signer: ethers.JsonRpcSigner | null;
+interface Wallet {
   address: string | null;
-  isConnected: boolean;
-  error: string | null;
+  connect: () => Promise<void>;
 }
 
-export function useLocalWallet() {
-  const [state, setState] = useState<WalletState>({
-    provider: null,
-    signer: null,
-    address: null,
-    isConnected: false,
-    error: null,
-  });
+export function useLocalWallet(): Wallet {
+  const [address, setAddress] = useState<string | null>(null);
 
   useEffect(() => {
-    const checkConnection = async () => {
-      if (!window.ethereum) {
-        setState(prev => ({
-          ...prev,
-          error: 'Please install MetaMask',
-        }));
-        return;
-      }
-
-      try {
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const accounts = await provider.listAccounts();
-
-        if (accounts.length > 0) {
-          const signer = await provider.getSigner();
-          const address = await signer.getAddress();
-          setState(prev => ({
-            ...prev,
-            provider,
-            signer,
-            address,
-            isConnected: true,
-            error: null,
-          }));
-        }
-      } catch (error) {
-        setState(prev => ({
-          ...prev,
-          error: error instanceof Error ? error.message : 'Failed to check connection',
-        }));
-      }
+    // Simulate wallet connection
+    const connectWallet = async () => {
+      // Simulate fetching wallet address
+      const fetchedAddress = '0x1234567890abcdef';
+      setAddress(fetchedAddress);
     };
 
-    checkConnection();
-
-    const handleAccountsChanged = (accounts: string[]) => {
-      if (accounts.length === 0) {
-        setState(prev => ({
-          ...prev,
-          provider: null,
-          signer: null,
-          address: null,
-          isConnected: false,
-        }));
-      } else {
-        checkConnection();
-      }
-    };
-
-    const handleChainChanged = () => {
-      window.location.reload();
-    };
-
-    window.ethereum?.on('accountsChanged', handleAccountsChanged);
-    window.ethereum?.on('chainChanged', handleChainChanged);
-
-    return () => {
-      window.ethereum?.removeListener('accountsChanged', handleAccountsChanged);
-      window.ethereum?.removeListener('chainChanged', handleChainChanged);
-    };
+    connectWallet();
   }, []);
 
   const connect = async () => {
-    if (!window.ethereum) {
-      setState(prev => ({
-        ...prev,
-        error: 'Please install MetaMask',
-      }));
-      return;
-    }
-
-    try {
-      setState(prev => ({ ...prev, error: null }));
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      await provider.send('eth_requestAccounts', []);
-      const signer = await provider.getSigner();
-      const address = await signer.getAddress();
-      setState(prev => ({
-        ...prev,
-        provider,
-        signer,
-        address,
-        isConnected: true,
-      }));
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        error: error instanceof Error ? error.message : 'Failed to connect wallet',
-      }));
-    }
+    // Simulate wallet connection logic
+    const newAddress = '0xabcdef1234567890';
+    setAddress(newAddress);
   };
 
-  const disconnect = () => {
-    setState(prev => ({
-      ...prev,
-      provider: null,
-      signer: null,
-      address: null,
-      isConnected: false,
-    }));
-  };
-
-  return {
-    ...state,
-    connect,
-    disconnect,
-  };
+  return { address, connect };
 } 

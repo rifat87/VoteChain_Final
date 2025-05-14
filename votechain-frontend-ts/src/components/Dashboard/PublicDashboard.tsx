@@ -1,70 +1,56 @@
-import { useState, useEffect } from "react"
-import { useWallet } from "@/components/ui/wallet-provider"
-import { useContract } from "@/hooks/useContract"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import { useToast } from "@/components/ui/use-toast"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Loader2 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { useEffect, useState } from "react"
+import { useLocalContract } from "@/local/hooks/useLocalContract"
+import { useLocalWallet } from "@/local/hooks/useLocalWallet"
 import { CandidateList } from "@/components/Dashboard/CandidateList"
-import { Badge } from "@/components/ui/badge"
-import { getContract } from "@/utils/contract"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
 
 export function PublicDashboard() {
-  const [isElectionActive, setIsElectionActive] = useState(false)
+  const router = useRouter()
+  const { getCandidates } = useLocalContract()
+  const { address } = useLocalWallet()
+  const [candidates, setCandidates] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const checkElectionStatus = async () => {
+    const fetchCandidates = async () => {
       try {
-        setIsLoading(true)
-        setError(null)
-        const contract = await getContract()
-        const status = await contract.isElectionActive()
-        setIsElectionActive(status)
-      } catch (error) {
-        console.error("Error checking election status:", error)
-        setError("Failed to check election status. Please try again later.")
+        const data = await getCandidates()
+        setCandidates(data)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch candidates')
       } finally {
         setIsLoading(false)
       }
     }
 
-    checkElectionStatus()
-  }, [])
+    fetchCandidates()
+  }, [getCandidates])
+
+  if (isLoading) {
+    return <div>Loading...</div>
+  }
+
+  if (error) {
+    return <div>Error: {error}</div>
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto p-4">
       <Card>
         <CardHeader>
-          <CardTitle>Election Status</CardTitle>
+          <CardTitle>Public Dashboard</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="text-center py-4">Checking election status...</div>
-          ) : error ? (
-            <div className="bg-destructive/15 text-destructive p-4 rounded-md">
-              {error}
-            </div>
-          ) : (
-            <div className="flex items-center space-x-2">
-              <Badge variant={isElectionActive ? "default" : "secondary"}>
-                {isElectionActive ? "Active" : "Ended"}
-              </Badge>
-              <span className="text-muted-foreground">
-                {isElectionActive
-                  ? "The election is currently in progress"
-                  : "The election has ended"}
-              </span>
-            </div>
-          )}
+          <p className="mb-4">Your address: {address}</p>
+          <CandidateList 
+            candidates={candidates} 
+            isLoading={isLoading}
+          />
         </CardContent>
       </Card>
-
-      <CandidateList />
     </div>
   )
 } 

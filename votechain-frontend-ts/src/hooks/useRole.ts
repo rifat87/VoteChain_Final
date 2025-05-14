@@ -1,62 +1,34 @@
-import { useState, useEffect, useRef } from 'react'
-import { useWallet } from '@/components/ui/wallet-provider'
-import { useContract } from './useContract'
+import { useLocalContract } from '@/local/hooks/useLocalContract'
+import { useLocalWallet } from '@/local/hooks/useLocalWallet'
+import { useEffect, useState } from 'react'
 
 export function useRole() {
-  const { address, isConnected } = useWallet()
-  const { contract, isAdmin } = useContract()
-  const [isUserAdmin, setIsUserAdmin] = useState(false)
+  const { isAdmin } = useLocalContract()
+  const { address } = useLocalWallet()
+  const [role, setRole] = useState<'admin' | 'voter' | 'public' | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const lastCheckedAddress = useRef<string | null>(null)
 
   useEffect(() => {
-    let mounted = true
-    const currentAddress = address?.toLowerCase()
-
-    async function checkRole() {
-      if (!isConnected || !currentAddress || !contract) {
-        if (mounted) {
-          setIsUserAdmin(false)
-          setIsLoading(false)
-        }
-        return
-      }
-
-      // Skip if we've already checked this address
-      if (lastCheckedAddress.current === currentAddress) {
-        if (mounted) {
-          setIsLoading(false)
-        }
+    const checkRole = async () => {
+      if (!address) {
+        setRole('public')
+        setIsLoading(false)
         return
       }
 
       try {
-        const adminStatus = await isAdmin(currentAddress)
-        if (mounted) {
-          setIsUserAdmin(adminStatus)
-          lastCheckedAddress.current = currentAddress
-        }
+        const admin = await isAdmin(address)
+        setRole(admin ? 'admin' : 'voter')
       } catch (error) {
-        console.error('Error checking admin status:', error)
-        if (mounted) {
-          setIsUserAdmin(false)
-        }
+        console.error('Error checking role:', error)
+        setRole('public')
       } finally {
-        if (mounted) {
-          setIsLoading(false)
-        }
+        setIsLoading(false)
       }
     }
 
     checkRole()
+  }, [address, isAdmin])
 
-    return () => {
-      mounted = false
-    }
-  }, [isConnected, address, contract, isAdmin])
-
-  return {
-    isAdmin: isUserAdmin,
-    isLoading
-  }
+  return { role, isLoading }
 } 

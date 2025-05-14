@@ -10,32 +10,8 @@ import {
 
 export function useContract() {
   const [contract, setContract] = useState<ethers.Contract | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    async function initContract() {
-      try {
-        if (!window.ethereum) {
-          throw new Error('MetaMask is not installed')
-        }
-
-        // Initialize contract with signer for all operations
-        const provider = new ethers.BrowserProvider(window.ethereum)
-        const signer = await provider.getSigner()
-        const contract = createLocalContract(signer)
-        
-        setContract(contract)
-        setError(null)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to initialize contract')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    initContract()
-  }, [])
 
   // Function to get contract with signer for transactions
   const getContractWithSigner = async () => {
@@ -47,9 +23,24 @@ export function useContract() {
     return createLocalContract(signer)
   }
 
+  // Function to get read-only contract
+  const getReadOnlyContract = async () => {
+    const provider = new ethers.JsonRpcProvider('http://localhost:8545') // Use your local network URL
+    return createLocalContract(provider)
+  }
+
   const getCandidates = async () => {
-    if (!contract) throw new Error('Contract not initialized')
-    return contract.getCandidates()
+    try {
+      setIsLoading(true)
+      const readOnlyContract = await getReadOnlyContract()
+      const candidates = await readOnlyContract.getCandidates()
+      return candidates
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to get candidates')
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const castVote = async (candidateId: number) => {
@@ -63,8 +54,8 @@ export function useContract() {
   }
 
   const isAdmin = async (address: string) => {
-    if (!contract) throw new Error('Contract not initialized')
-    const commissionAddress = await contract.electionCommission()
+    const contractWithSigner = await getContractWithSigner()
+    const commissionAddress = await contractWithSigner.electionCommission()
     return address.toLowerCase() === commissionAddress.toLowerCase()
   }
 
@@ -129,22 +120,21 @@ export function useContract() {
   }
 
   const isRegisteredVoter = async (address: string) => {
-    if (!contract) throw new Error('Contract not initialized')
-    return contract.isRegisteredVoter(address)
+    const contractWithSigner = await getContractWithSigner()
+    return contractWithSigner.isRegisteredVoter(address)
   }
 
   const isVoted = async (address: string) => {
-    if (!contract) throw new Error('Contract not initialized')
-    return contract.isVoted(address)
+    const contractWithSigner = await getContractWithSigner()
+    return contractWithSigner.isVoted(address)
   }
 
   const getVoteCount = async (candidateId: number) => {
-    if (!contract) throw new Error('Contract not initialized')
-    return contract.getVoteCount(candidateId)
+    const readOnlyContract = await getReadOnlyContract()
+    return readOnlyContract.getVoteCount(candidateId)
   }
 
   return {
-    contract,
     isLoading,
     error,
     getCandidates,

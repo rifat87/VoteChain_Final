@@ -11,14 +11,21 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { isConnected } = useWallet();
   const navigate = useNavigate();
 
+  // Only redirect if we're already on a dashboard page and not connected
   useEffect(() => {
-    if (!isConnected) {
+    const currentPath = window.location.pathname;
+    if (!isConnected && (currentPath.startsWith('/admin') || currentPath.startsWith('/voter'))) {
       navigate("/");
     }
   }, [isConnected, navigate]);
 
+  // Show loading state instead of null
   if (!isConnected) {
-    return null;
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-muted-foreground">Please connect your wallet to access the dashboard</p>
+      </div>
+    );
   }
 
   return (

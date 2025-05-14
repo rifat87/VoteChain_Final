@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useWallet } from "@/components/ui/wallet-provider";
-import { useContract } from "@/hooks/useContract";
+import { useLocalContract } from "@/local/hooks/useLocalContract";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
+import { CandidateList } from "@/components/Dashboard/CandidateList";
 
 interface Candidate {
   id: number;
@@ -24,12 +25,13 @@ interface Candidate {
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { address, isConnected } = useWallet();
-  const { getCandidates, registerCandidate, endElection } = useContract();
+  const { getCandidates } = useLocalContract();
   const { toast } = useToast();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [newCandidate, setNewCandidate] = useState({ name: "", party: "" });
   const [isAddingCandidate, setIsAddingCandidate] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchCandidates = async () => {
     try {
@@ -45,12 +47,8 @@ export default function AdminDashboard() {
       }));
 
       setCandidates(formattedCandidates);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch candidates",
-        variant: "destructive",
-      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch candidates');
     } finally {
       setLoading(false);
     }
@@ -58,7 +56,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchCandidates();
-  }, [toast]);
+  }, [getCandidates]);
 
   const handleAddCandidate = async () => {
     if (!isConnected) {
@@ -122,6 +120,10 @@ export default function AdminDashboard() {
     );
   }
 
+  if (error) {
+    return <div>Error: {error}</div>;
+  }
+
   return (
     <DashboardLayout>
       <div className="p-8">
@@ -181,29 +183,10 @@ export default function AdminDashboard() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {candidates.map((candidate) => (
-                <Card key={candidate.id}>
-                  <CardHeader>
-                    <CardTitle>{candidate.name}</CardTitle>
-                    <CardDescription>{candidate.party}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Votes</span>
-                          <span>{candidate.votes}</span>
-                        </div>
-                        <Progress value={candidate.percentage} />
-                      </div>
-                      <Button variant="destructive" className="w-full">
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Remove
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+              <CandidateList 
+                candidates={candidates} 
+                isLoading={loading}
+              />
             </div>
           </TabsContent>
 
