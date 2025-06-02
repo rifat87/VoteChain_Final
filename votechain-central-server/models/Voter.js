@@ -113,6 +113,6 @@ voterSchema.index({ isRegistered: 1 });
 voterSchema.index({ isVerified: 1 });
 voterSchema.index({ verificationStatus: 1 });
 
-const Voter = mongoose.model('Voter', voterSchema);
+const Voter = mongoose.model('Voter', voterSchema, 'voterCollection');
 
 export default Voter; 

@@ -95,7 +95,17 @@ export function useContract() {
         faceHash
       );
       console.log('Transaction sent:', tx);
-      return tx;
+      
+      // Wait for transaction to be mined
+      const receipt = await tx.wait()
+      console.log('Transaction receipt:', receipt)
+      
+      // Verify transaction was successful
+      if (receipt.status === 0) {
+        throw new Error('Transaction failed on blockchain')
+      }
+
+      return receipt.hash
     } catch (error) {
       console.error("Error registering voter:", error);
       throw error;

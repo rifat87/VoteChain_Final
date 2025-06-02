@@ -124,24 +124,12 @@ export function RegisterVoter() {
       console.log('Face hash:', faceHash)
 
       // Step 2: Register on blockchain
-      const tx = await registerVoter(
+      const blockchainId = await registerVoter(
         formData.name,
         formData.nationalId,
         formData.location,
         faceHash
       )
-      console.log('Transaction sent:', tx)
-      
-      // Wait for transaction to be mined
-      const receipt = await tx.wait()
-      console.log('Transaction receipt:', receipt)
-      
-      // Verify transaction was successful
-      if (receipt.status === 0) {
-        throw new Error('Transaction failed on blockchain')
-      }
-
-      const blockchainId = receipt.hash
       console.log('Blockchain ID:', blockchainId)
 
       // Step 3: Store in central server
@@ -156,7 +144,6 @@ export function RegisterVoter() {
           faceId: faceHash,
           blockchainId,
           dateOfBirth: formData.dateOfBirth.toISOString(),
-          fingerprint: formData.fingerprintHash || '',
         }),
       })
 
