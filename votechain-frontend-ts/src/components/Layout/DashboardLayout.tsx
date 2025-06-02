@@ -8,18 +8,25 @@ interface DashboardLayoutProps {
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
-  const { isConnected } = useWallet();
+  const { isConnected, isWalletChecked } = useWallet();
   const navigate = useNavigate();
 
-  // Only redirect if we're already on a dashboard page and not connected
   useEffect(() => {
-    const currentPath = window.location.pathname;
-    if (!isConnected && (currentPath.startsWith('/admin') || currentPath.startsWith('/voter'))) {
-      navigate("/");
+    if (isWalletChecked && !isConnected) {
+      navigate('/', { replace: true });
     }
-  }, [isConnected, navigate]);
+  }, [isWalletChecked, isConnected, navigate]);
 
-  // Show loading state instead of null
+  // Show loader while wallet is being checked
+  if (!isWalletChecked) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <span className="text-muted-foreground">Loading...</span>
+      </div>
+    );
+  }
+
+  // Show connect message if not connected
   if (!isConnected) {
     return (
       <div className="flex h-screen items-center justify-center">

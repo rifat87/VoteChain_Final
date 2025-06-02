@@ -46,11 +46,35 @@ const voterSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  faceId: {
+    type: String,
+    required: [true, 'Face ID is required'],
+    trim: true,
+    minlength: [32, 'Face ID must be at least 32 characters long']
+  },
   walletAddress: {
     type: String,
     unique: true,
     sparse: true,
-    trim: true
+    trim: true,
+    validate: {
+      validator: function(v) {
+        return !v || /^0x[a-fA-F0-9]{40}$/.test(v);
+      },
+      message: props => `${props.value} is not a valid Ethereum address!`
+    }
+  },
+  blockchainId: {
+    type: String,
+    unique: true,
+    sparse: true,
+    trim: true,
+    validate: {
+      validator: function(v) {
+        return !v || /^0x[a-fA-F0-9]{64}$/.test(v);
+      },
+      message: props => `${props.value} is not a valid blockchain transaction hash!`
+    }
   },
   isRegistered: {
     type: Boolean,
@@ -84,6 +108,7 @@ const voterSchema = new mongoose.Schema({
 // Indexes
 voterSchema.index({ nationalId: 1 });
 voterSchema.index({ walletAddress: 1 });
+voterSchema.index({ blockchainId: 1 });
 voterSchema.index({ isRegistered: 1 });
 voterSchema.index({ isVerified: 1 });
 voterSchema.index({ verificationStatus: 1 });

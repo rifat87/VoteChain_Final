@@ -14,28 +14,60 @@ contract LocalVoting {
         bool isVerified;
     }
 
+    // New Voter struct
+    struct Voter {
+        uint id;
+        string name;
+        string nationalId;
+        string location;
+        string faceHash;
+        bool isVerified;
+    }
+
     uint public candidateCount;
+    uint public voterCount; // New counter for voters
     mapping(uint => Candidate) public candidates;
+    mapping(uint => Voter) public voters; // New mapping for voters
     mapping(string => bool) public nationalIdExists;
+    mapping(string => bool) public voterNationalIdExists; // New mapping for voter national IDs
     mapping(address => bool) public registeredVoters;
     mapping(address => bool) public hasVoted;
-    // Separate mapping for face hashes
-    mapping(uint => bytes32) public candidateFaceHashes;
+    // Changed to string mapping
+    mapping(uint => string) public candidateFaceHashes;
+    mapping(uint => string) public voterFaceHashes; // New mapping for voter face hashes
 
     // Events
     event CandidateRegistered(
         uint id,
         string nationalId,
         string name,
-        bytes32 faceHash,
+        string faceHash,
+        uint256 timestamp
+    );
+
+    // New event for voter registration
+    event VoterRegistered(
+        uint id,
+        string nationalId,
+        string name,
+        string faceHash,
         uint256 timestamp
     );
 
     event FaceHashUpdated(
         uint id,
         string nationalId,
-        bytes32 oldHash,
-        bytes32 newHash,
+        string oldHash,
+        string newHash,
+        uint256 timestamp
+    );
+
+    // New event for voter face hash update
+    event VoterFaceHashUpdated(
+        uint id,
+        string nationalId,
+        string oldHash,
+        string newHash,
         uint256 timestamp
     );
 
@@ -53,10 +85,10 @@ contract LocalVoting {
         string memory _name,
         string memory _nationalId,
         string memory _location,
-        bytes32 _faceHash
+        string memory _faceHash
     ) public onlyCommission {
         require(!nationalIdExists[_nationalId], "National ID already registered");
-        require(_faceHash != bytes32(0), "Invalid face hash");
+        require(bytes(_faceHash).length > 0, "Invalid face hash");
         
         candidateCount++;
         candidates[candidateCount] = Candidate(
@@ -79,14 +111,45 @@ contract LocalVoting {
         );
     }
 
+    // New voter registration function
+    function registerVoter(
+        string memory _name,
+        string memory _nationalId,
+        string memory _location,
+        string memory _faceHash
+    ) public onlyCommission {
+        require(!voterNationalIdExists[_nationalId], "National ID already registered");
+        require(bytes(_faceHash).length > 0, "Invalid face hash");
+        
+        voterCount++;
+        voters[voterCount] = Voter(
+            voterCount,
+            _name,
+            _nationalId,
+            _location,
+            _faceHash,
+            false
+        );
+        voterNationalIdExists[_nationalId] = true;
+        voterFaceHashes[voterCount] = _faceHash;
+
+        emit VoterRegistered(
+            voterCount,
+            _nationalId,
+            _name,
+            _faceHash,
+            block.timestamp
+        );
+    }
+
     function updateFaceHash(
         uint _candidateId,
-        bytes32 _newFaceHash
+        string memory _newFaceHash
     ) public onlyCommission {
         require(_candidateId > 0 && _candidateId <= candidateCount, "Invalid candidate");
-        require(_newFaceHash != bytes32(0), "Invalid face hash");
+        require(bytes(_newFaceHash).length > 0, "Invalid face hash");
 
-        bytes32 oldHash = candidateFaceHashes[_candidateId];
+        string memory oldHash = candidateFaceHashes[_candidateId];
         candidateFaceHashes[_candidateId] = _newFaceHash;
 
         emit FaceHashUpdated(
@@ -98,17 +161,46 @@ contract LocalVoting {
         );
     }
 
+    // New face hash update function for voters
+    function updateVoterFaceHash(
+        uint _voterId,
+        string memory _newFaceHash
+    ) public onlyCommission {
+        require(_voterId > 0 && _voterId <= voterCount, "Invalid voter");
+        require(bytes(_newFaceHash).length > 0, "Invalid face hash");
+
+        string memory oldHash = voterFaceHashes[_voterId];
+        voterFaceHashes[_voterId] = _newFaceHash;
+
+        emit VoterFaceHashUpdated(
+            _voterId,
+            voters[_voterId].nationalId,
+            oldHash,
+            _newFaceHash,
+            block.timestamp
+        );
+    }
+
     function verifyFaceHash(
         uint _candidateId,
-        bytes32 _providedHash
+        string memory _providedHash
     ) public view returns (bool) {
         require(_candidateId > 0 && _candidateId <= candidateCount, "Invalid candidate");
-        return candidateFaceHashes[_candidateId] == _providedHash;
+        return keccak256(bytes(candidateFaceHashes[_candidateId])) == keccak256(bytes(_providedHash));
+    }
+
+    // New face hash verification for voters
+    function verifyVoterFaceHash(
+        uint _voterId,
+        string memory _providedHash
+    ) public view returns (bool) {
+        require(_voterId > 0 && _voterId <= voterCount, "Invalid voter");
+        return keccak256(bytes(voterFaceHashes[_voterId])) == keccak256(bytes(_providedHash));
     }
 
     function getCandidateFaceHash(
         uint _candidateId
-    ) public view returns (bytes32) {
+    ) public view returns (string memory) {
         require(_candidateId > 0 && _candidateId <= candidateCount, "Invalid candidate");
         return candidateFaceHashes[_candidateId];
     }
@@ -118,7 +210,13 @@ contract LocalVoting {
         candidates[_candidateId].isVerified = true;
     }
 
-    function registerVoter(address _voter) public onlyCommission {
+    // New voter verification
+    function verifyVoter(uint _voterId) public onlyCommission {
+        require(_voterId > 0 && _voterId <= voterCount, "Invalid voter");
+        voters[_voterId].isVerified = true;
+    }
+
+    function registerVoterAddress(address _voter) public onlyCommission {
         registeredVoters[_voter] = true;
     }
 
@@ -138,5 +236,10 @@ contract LocalVoting {
 
     function getCandidate(uint _candidateId) public view returns (Candidate memory) {
         return candidates[_candidateId];
+    }
+
+    // New get voter function
+    function getVoter(uint _voterId) public view returns (Voter memory) {
+        return voters[_voterId];
     }
 }

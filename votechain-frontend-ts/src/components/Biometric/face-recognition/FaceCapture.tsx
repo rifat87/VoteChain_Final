@@ -8,7 +8,7 @@ import { Camera, CheckCircle2 } from "lucide-react";
 
 interface FaceCaptureProps {
   nid: string;
-  onCaptureComplete: (success: boolean) => void;
+  onCaptureComplete: (success: boolean, hash?: string) => void;
 }
 
 export function FaceCapture({ nid, onCaptureComplete }: FaceCaptureProps) {
@@ -62,7 +62,15 @@ export function FaceCapture({ nid, onCaptureComplete }: FaceCaptureProps) {
       if (data.success) {
         setProgress(100);
         setCurrentImage(totalImages);
-        onCaptureComplete(true);
+        
+        // Get face hash from server
+        const hashResponse = await fetch(`http://localhost:5000/api/candidates/face-hash/${nid}`);
+        if (!hashResponse.ok) {
+          throw new Error('Failed to get face hash');
+        }
+        const { faceHash } = await hashResponse.json();
+        
+        onCaptureComplete(true, faceHash);
       } else {
         throw new Error(data.message || 'Face capture failed');
       }

@@ -43,14 +43,7 @@ const candidateSchema = new mongoose.Schema({
   },
   dateOfBirth: {
     type: Date,
-    required: [true, 'Date of birth is required'],
-    validate: {
-      validator: function(v) {
-        const age = new Date().getFullYear() - v.getFullYear();
-        return age >= 25 && age <= 100;
-      },
-      message: 'Candidate must be at least 25 years old and not older than 100 years'
-    }
+    required: [true, 'Date of birth is required']
   },
   bloodGroup: {
     type: String,

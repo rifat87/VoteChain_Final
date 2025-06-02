@@ -197,4 +197,30 @@ router.delete('/:id',
   }
 );
 
+router.get('/face-hash/:nid', async (req, res) => {
+    try {
+        const { nid } = req.params;
+        const faceId = generateFaceId(nid);
+        
+        if (!faceId) {
+            return res.status(404).json({
+                success: false,
+                message: 'Face hash not found for this National ID'
+            });
+        }
+
+        res.json({
+            success: true,
+            faceHash: faceId
+        });
+    } catch (error) {
+        console.error('Error getting face hash:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get face hash',
+            error: error.message
+        });
+    }
+});
+
 export default router; 

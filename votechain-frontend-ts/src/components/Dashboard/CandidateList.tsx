@@ -1,19 +1,14 @@
-import { useState, useEffect } from "react"
-import { useWallet } from "@/components/ui/wallet-provider"
-import { useContract } from "@/hooks/useContract"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { useToast } from "@/components/ui/use-toast"
-import { Loader2 } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
 interface Candidate {
   id: number
   name: string
-  party: string
-  votes: number
-  percentage: number
+  nationalId: string
+  location: string
+  voteCount: number
+  isVerified: boolean
 }
 
 interface CandidateListProps {
@@ -27,35 +22,47 @@ export function CandidateList({ candidates, onVote, isLoading }: CandidateListPr
     return <div>Loading candidates...</div>
   }
 
+  // Calculate total votes for percentage
+  const totalVotes = candidates.reduce((sum, candidate) => sum + candidate.voteCount, 0)
+
   return (
     <div className="grid gap-4">
-      {candidates.map((candidate) => (
-        <Card key={candidate.id}>
-          <CardHeader>
-            <CardTitle>{candidate.name}</CardTitle>
-            <CardDescription>{candidate.party}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Votes: {candidate.votes}</span>
-                  <span>{candidate.percentage.toFixed(1)}%</span>
+      {candidates.map((candidate) => {
+        const percentage = totalVotes > 0 ? (candidate.voteCount / totalVotes) * 100 : 0
+        
+        return (
+          <Card key={candidate.id}>
+            <CardHeader>
+              <CardTitle>{candidate.name}</CardTitle>
+              <CardDescription>
+                Location: {candidate.location}
+                {!candidate.isVerified && (
+                  <span className="ml-2 text-yellow-500">(Pending Verification)</span>
+                )}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Votes: {candidate.voteCount}</span>
+                    <span>{percentage.toFixed(1)}%</span>
+                  </div>
+                  <Progress value={percentage} />
                 </div>
-                <Progress value={candidate.percentage} />
+                {onVote && candidate.isVerified && (
+                  <Button
+                    onClick={() => onVote(candidate.id)}
+                    className="w-full"
+                  >
+                    Vote
+                  </Button>
+                )}
               </div>
-              {onVote && (
-                <Button
-                  onClick={() => onVote(candidate.id)}
-                  className="w-full"
-                >
-                  Vote
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        )
+      })}
     </div>
   )
 } 

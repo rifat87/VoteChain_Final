@@ -1,51 +1,41 @@
 import { useEffect, useState } from "react"
-import { useLocalContract } from "@/local/hooks/useLocalContract"
-import { useLocalWallet } from "@/local/hooks/useLocalWallet"
+import { useContract } from "@/hooks/useContract"
+import { useWallet } from "@/components/ui/wallet-provider"
 import { CandidateList } from "@/components/Dashboard/CandidateList"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { useRouter } from "next/navigation"
+import { useNavigate } from "react-router-dom"
+import type { Candidate } from "@/hooks/useContract"
+
+// Demo candidate data
+const demoCandidates = [
+  {
+    id: 1,
+    name: "Alice Johnson",
+    nationalId: "1234567890",
+    location: "New York",
+    voteCount: 42,
+    isVerified: true,
+  },
+  {
+    id: 2,
+    name: "Bob Smith",
+    nationalId: "9876543210",
+    location: "California",
+    voteCount: 37,
+    isVerified: false,
+  },
+]
 
 export function VoterDashboard() {
-  const router = useRouter()
-  const { getCandidates, castVote } = useLocalContract()
-  const { address } = useLocalWallet()
-  const [candidates, setCandidates] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { isWalletChecked, isConnected } = useWallet()
+  const { isInitialized } = useContract()
 
-  useEffect(() => {
-    const fetchCandidates = async () => {
-      try {
-        const data = await getCandidates()
-        setCandidates(data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch candidates')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchCandidates()
-  }, [getCandidates])
-
-  const handleVote = async (candidateId: number) => {
-    try {
-      await castVote(candidateId)
-      router.push('/voter/success')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to cast vote')
-    }
+  if (!isWalletChecked || !isConnected || !isInitialized) {
+    return <div className="flex h-screen items-center justify-center"><span className="text-muted-foreground">Loading...</span></div>
   }
 
-  if (isLoading) {
-    return <div>Loading...</div>
-  }
-
-  if (error) {
-    return <div>Error: {error}</div>
-  }
-
+  // Only show dashboard if wallet and contract are ready
   return (
     <div className="container mx-auto p-4">
       <Card>
@@ -53,12 +43,7 @@ export function VoterDashboard() {
           <CardTitle>Voter Dashboard</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mb-4">Your address: {address}</p>
-          <CandidateList 
-            candidates={candidates} 
-            onVote={handleVote}
-            isLoading={isLoading}
-          />
+          <CandidateList candidates={demoCandidates} isLoading={false} />
         </CardContent>
       </Card>
     </div>

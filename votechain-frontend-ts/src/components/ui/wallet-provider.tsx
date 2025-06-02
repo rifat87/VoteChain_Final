@@ -1,11 +1,14 @@
 import { createContext, useContext, useEffect, useState, useRef } from "react"
 import { BrowserProvider, JsonRpcSigner } from "ethers"
+import { useNavigate } from "react-router-dom"
 
 interface WalletState {
   isConnected: boolean
   address: string | null
   provider: BrowserProvider | null
   signer: JsonRpcSigner | null
+  isConnecting: boolean
+  isWalletChecked: boolean
 }
 
 interface WalletContextType extends WalletState {
@@ -17,7 +20,9 @@ const initialState: WalletState = {
   isConnected: false,
   address: null,
   provider: null,
-  signer: null
+  signer: null,
+  isConnecting: false,
+  isWalletChecked: false
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined)
@@ -26,9 +31,36 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<WalletState>(initialState)
   const mountedRef = useRef(true)
   const connectionRequested = useRef(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     mountedRef.current = true
+    async function checkWallet() {
+      if (typeof window.ethereum === 'undefined') {
+        setState(prev => ({ ...prev, isWalletChecked: true }))
+        return
+      }
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' })
+        if (accounts.length > 0) {
+          const provider = new BrowserProvider(window.ethereum)
+          const signer = await provider.getSigner()
+          setState({
+            isConnected: true,
+            address: accounts[0],
+            provider,
+            signer,
+            isConnecting: false,
+            isWalletChecked: true
+          })
+        } else {
+          setState(prev => ({ ...prev, isWalletChecked: true }))
+        }
+      } catch {
+        setState(prev => ({ ...prev, isWalletChecked: true }))
+      }
+    }
+    checkWallet()
     return () => {
       mountedRef.current = false
     }
@@ -44,18 +76,22 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
       if (accounts.length === 0) {
         // User disconnected their wallet
-        setState(initialState)
+        setState({
+          ...initialState,
+          isWalletChecked: true
+        })
+        navigate('/', { replace: true })
       } else {
         // Only update state if we're already connected
         if (state.isConnected) {
           const provider = new BrowserProvider(window.ethereum)
           const signer = await provider.getSigner()
-          setState({
-            isConnected: true,
+          setState(prev => ({
+            ...prev,
             address: accounts[0],
             provider,
             signer
-          })
+          }))
         }
       }
     }
@@ -83,12 +119,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Prevent multiple simultaneous connection attempts
-    if (connectionRequested.current) {
+    if (connectionRequested.current || state.isConnecting) {
       return
     }
 
     try {
       connectionRequested.current = true
+      setState(prev => ({ ...prev, isConnecting: true }))
+      
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
       if (accounts.length > 0) {
         const provider = new BrowserProvider(window.ethereum)
@@ -98,11 +136,16 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           isConnected: true,
           address: accounts[0],
           provider,
-          signer
+          signer,
+          isConnecting: false,
+          isWalletChecked: true
         })
+        // Redirect to AdminDashboard after successful connection
+        navigate('/admin', { replace: true })
       }
     } catch (error) {
       console.error('Error connecting to MetaMask:', error)
+      setState(prev => ({ ...prev, isConnecting: false, isWalletChecked: true }))
       throw error
     } finally {
       connectionRequested.current = false
@@ -110,8 +153,36 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }
 
   const disconnect = async () => {
-    // Reset the local state
-    setState(initialState)
+    try {
+      if (window.ethereum) {
+        // Revoke all permissions from MetaMask
+        await window.ethereum.request({
+          method: "wallet_revokePermissions",
+          params: [{ eth_accounts: {} }]
+        });
+      }
+
+      // Reset all state
+      setState({
+        ...initialState,
+        isWalletChecked: true
+      })
+      
+      // Clear any cached data
+      localStorage.removeItem('walletConnected')
+      
+      // Force a page reload to ensure clean state
+      window.location.reload()
+    } catch (error) {
+      console.error('Error disconnecting wallet:', error)
+      // Even if there's an error, we still want to reset everything
+      setState({
+        ...initialState,
+        isWalletChecked: true
+      })
+      localStorage.removeItem('walletConnected')
+      window.location.reload()
+    }
   }
 
   return (

@@ -1,37 +1,55 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom"
 import { ThemeProvider } from "@/components/ui/theme-provider"
-import { WalletProvider } from "@/components/ui/wallet-provider"
+import { WalletProvider, useWallet } from "@/components/ui/wallet-provider"
 import { Toaster } from "@/components/ui/toaster"
-import Dashboard from "@/pages/Dashboard"
-import { VoterDashboard } from "@/pages/VoterDashboard"
-import AdminDashboard from "@/pages/AdminDashboard"
-import { VoterRegistrationPage } from "@/pages/VoterRegistrationPage"
-import { RegisterCandidatePage } from "@/pages/RegisterCandidatePage"
-import { useRoleRedirect } from "@/hooks/useRoleRedirect"
-
-function AppRoutes() {
-  useRoleRedirect()
-  
-  return (
-    <Routes>
-      <Route path="/" element={<Dashboard />} />
-      <Route path="/voter" element={<VoterDashboard />} />
-      <Route path="/admin" element={<AdminDashboard />} />
-      <Route path="/register" element={<VoterRegistrationPage />} />
-      <Route path="/admin/register-candidate" element={<RegisterCandidatePage />} />
-    </Routes>
-  )
-}
+import { PublicDashboard } from "@/components/Dashboard/PublicDashboard"
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
+import { Layout } from "@/components/Layout/Layout"
+import { AdminDashboard } from "@/components/Admin/AdminDashboard"
+import { VoterDashboard } from "@/components/Voter/VoterDashboard"
+import { ErrorBoundary } from "@/components/ui/error-boundary"
+import { RegisterCandidate } from "@/components/Admin/RegisterCandidate"
+import { RegisterVoter } from "@/components/Admin/RegisterVoter"
 
 export function App() {
   return (
-    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-      <WalletProvider>
-        <Router>
-          <AppRoutes />
-          <Toaster />
-        </Router>
-      </WalletProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <Router>
+        <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+          <WalletProvider>
+            <AppWithWallet />
+            <Toaster />
+          </WalletProvider>
+        </ThemeProvider>
+      </Router>
+    </ErrorBoundary>
   )
+}
+
+function AppWithWallet() {
+  const { isConnected, isWalletChecked } = useWallet();
+
+  // While checking wallet, show loader (not inside Layout)
+  if (!isWalletChecked) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <span className="text-muted-foreground">Loading...</span>
+      </div>
+    );
+  }
+
+  return (
+    <Layout>
+      <Routes>
+        <Route
+          path="/"
+          element={<PublicDashboard />}
+        />
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/register-candidate" element={<RegisterCandidate />} />
+        <Route path="/admin/register-voter" element={<RegisterVoter />} />
+        <Route path="/voter/*" element={<VoterDashboard />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Layout>
+  );
 }

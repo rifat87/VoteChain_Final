@@ -14,7 +14,7 @@ const navigation = [
 ]
 
 export function DashboardSidebar() {
-  const { isConnected, address, connect, disconnect } = useWallet()
+  const { isConnected, isWalletChecked, address, connect, disconnect } = useWallet()
   const { theme, setTheme } = useTheme()
   const { isAdmin } = useRole()
 
@@ -88,7 +88,7 @@ export function DashboardSidebar() {
         </Button>
         <Separator />
         <div className="space-y-2">
-          {isConnected ? (
+          {!isWalletChecked ? null : isConnected ? (
             <>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">

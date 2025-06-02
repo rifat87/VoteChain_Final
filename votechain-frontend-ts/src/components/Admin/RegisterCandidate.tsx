@@ -1,443 +1,338 @@
-import { useState } from "react"
-import { useLocalContract } from "@/local/hooks/useLocalContract"
+import { useContract } from "@/hooks/useContract"
+import { useWallet } from "@/components/ui/wallet-provider"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { useNavigate } from "react-router-dom"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { toast } from "sonner"
+import { useToast } from "@/components/ui/use-toast"
+import { useState } from "react"
 import { FaceCapture } from "@/components/Biometric/face-recognition/FaceCapture"
 import { FingerprintCapture } from "@/components/Biometric/fingerprint/FingerprintCapture"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Loader2 } from "lucide-react"
-import { z } from "zod"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { format } from "date-fns"
+import { CalendarIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { ethers } from "ethers"
+import { contractAddress, contractABI } from "@/config/contract"
 
-interface CandidateFormData {
-  nationalId: string
+interface FormData {
   name: string
   party: string
-  faceId: string | null
-  fingerprint: string | null
-  // NID Data
+  nationalId: string
   fathersName: string
   mothersName: string
-  dateOfBirth: string
+  dateOfBirth: Date
   bloodGroup: string
   postOffice: string
-  postCode: string
+  postCode: number
   location: string
+  faceHash: string
+  fingerprintHash: string
 }
 
-const formSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters long").max(100, "Name cannot exceed 100 characters"),
-  party: z.string().min(2, "Party name must be at least 2 characters long").max(100, "Party name cannot exceed 100 characters"),
-  nationalId: z.string().regex(/^\d{10}$/, "National ID must be exactly 10 digits"),
-  fathersName: z.string().min(2, "Father's name must be at least 2 characters long").max(100, "Father's name cannot exceed 100 characters"),
-  mothersName: z.string().min(2, "Mother's name must be at least 2 characters long").max(100, "Mother's name cannot exceed 100 characters"),
-  dateOfBirth: z.string().refine((date) => {
-    const birthDate = new Date(date);
-    const today = new Date();
-    const age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      return age - 1 >= 25 && age - 1 <= 100;
-    }
-    return age >= 25 && age <= 100;
-  }, "Candidate must be between 25 and 100 years old"),
-  bloodGroup: z.enum(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'], {
-    required_error: "Please select a blood group",
-  }),
-  postOffice: z.string().min(2, "Post office must be at least 2 characters long").max(100, "Post office cannot exceed 100 characters"),
-  postCode: z.string().min(1, "Post code is required"),
-  location: z.string().min(2, "Location must be at least 2 characters long").max(200, "Location cannot exceed 200 characters"),
-});
+interface BiometricCaptureProps {
+  onCaptureComplete: (success: boolean, hash?: string) => void
+  nid: string
+}
 
 export function RegisterCandidate() {
-  const { registerCandidate, isAdmin } = useLocalContract()
-  const [formData, setFormData] = useState<CandidateFormData>({
-    nationalId: "",
+  const navigate = useNavigate()
+  const { registerCandidate, isAdmin } = useContract()
+  const { address } = useWallet()
+  const { toast } = useToast()
+  const [formData, setFormData] = useState<FormData>({
     name: "",
     party: "",
-    faceId: null,
-    fingerprint: null,
-    // NID Data
+    nationalId: "",
     fathersName: "",
     mothersName: "",
-    dateOfBirth: "",
+    dateOfBirth: new Date(),
     bloodGroup: "",
     postOffice: "",
-    postCode: "",
-    location: ""
+    postCode: 0,
+    location: "",
+    faceHash: "",
+    fingerprintHash: ""
   })
   const [isLoading, setIsLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState("form")
-  const [isFaceCaptured, setIsFaceCaptured] = useState(false)
-  const [isFingerprintCaptured, setIsFingerprintCaptured] = useState(false)
+  const [biometricStatus, setBiometricStatus] = useState({
+    faceCaptured: false,
+    fingerprintCaptured: false
+  })
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
 
-  const handleInputChange = (field: keyof CandidateFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-  }
-
-  const handleFaceCaptureComplete = (success: boolean) => {
-    setIsFaceCaptured(success);
-    if (success) {
-      setFormData(prev => ({ ...prev, faceId: "captured" }));
-    } else {
-      setFormData(prev => ({ ...prev, faceId: null }));
-    }
-  }
-
-  const handleFingerprintCapture = (data: string) => {
-    setFormData(prev => ({ ...prev, fingerprint: data }))
-    setIsFingerprintCaptured(true)
-  }
-
-  const handleFingerprintRetake = () => {
-    setFormData(prev => ({ ...prev, fingerprint: null }))
-    setIsFingerprintCaptured(false)
-  }
+  const bloodGroups = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
+    e.preventDefault()
+    if (!address) {
+      toast({
+        title: "Error",
+        description: "Please connect your wallet first",
+        variant: "destructive"
+      })
+      return
+    }
 
+    if (!isAdmin) {
+      toast({
+        title: "Error",
+        description: "Only admin can register candidates",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (!formData.nationalId.trim() || !formData.name.trim() || !formData.location.trim()) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (formData.postCode <= 0 || formData.postCode >= 10000) {
+      toast({
+        title: "Error",
+        description: "Post code must be a positive number less than 10000",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setIsLoading(true)
     try {
-      // Validate required fields
-      if (!formData.name || !formData.party || !formData.nationalId || 
-          !formData.fathersName || !formData.mothersName || !formData.dateOfBirth || 
-          !formData.bloodGroup || !formData.postOffice || !formData.postCode || 
-          !formData.location) {
-        throw new Error('Please fill in all required fields');
+      console.log('Starting blockchain registration...')
+      console.log('Contract address:', contractAddress)
+      console.log('Form data:', formData)
+
+      // Step 1: Get face hash from server
+      const faceHashResponse = await fetch(`http://localhost:5000/api/candidates/face-hash/${formData.nationalId}`)
+      if (!faceHashResponse.ok) {
+        throw new Error('Failed to get face hash from server')
       }
+      const { faceHash } = await faceHashResponse.json()
+      console.log('Face hash:', faceHash)
 
-      // Validate date of birth
-      const birthDate = new Date(formData.dateOfBirth);
-      const today = new Date();
-      const age = today.getFullYear() - birthDate.getFullYear();
-      const monthDiff = today.getMonth() - birthDate.getMonth();
-      const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) 
-        ? age - 1 
-        : age;
-
-      if (actualAge < 1 || actualAge > 10000) {
-        throw new Error('Candidate must be between 25 and 100 years old');
-      }
-
-      // Register on blockchain first
-      const receipt = await registerCandidate(
+      // Step 2: Register on blockchain
+      const tx = await registerCandidate(
         formData.name,
         formData.nationalId,
-        formData.location
-      );
+        formData.location,
+        faceHash
+      )
+      console.log('Transaction sent:', tx)
       
-      if (!receipt) {
-        throw new Error('Failed to register candidate on blockchain');
+      // Wait for transaction to be mined
+      const receipt = await tx.wait()
+      console.log('Transaction receipt:', receipt)
+      
+      // Verify transaction was successful
+      if (receipt.status === 0) {
+        throw new Error('Transaction failed on blockchain')
       }
 
-      // Format date to ISO string
-      const formattedDate = birthDate.toISOString();
+      const blockchainId = receipt.hash
+      console.log('Blockchain ID:', blockchainId)
 
-      // Register on central server
+      // Step 3: Store in central server
+      console.log('Storing in central server...')
       const response = await fetch('http://localhost:5000/api/candidates/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: formData.name.trim(),
-          party: formData.party.trim(),
-          nationalId: formData.nationalId.trim(),
-          fathersName: formData.fathersName.trim(),
-          mothersName: formData.mothersName.trim(),
-          dateOfBirth: formattedDate,
-          bloodGroup: formData.bloodGroup.trim(),
-          postOffice: formData.postOffice.trim(),
-          postCode: parseInt(formData.postCode, 10),
-          location: formData.location.trim(),
-          faceId: formData.faceId || "placeholder",
-          fingerprint: formData.fingerprint || "placeholder",
-          blockchainId: receipt // Using the transaction hash directly from the receipt
+          ...formData,
+          blockchainId,
+          dateOfBirth: formData.dateOfBirth.toISOString(),
         }),
-      });
+      })
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to register candidate on central server');
+        const errorData = await response.json()
+        throw new Error(`Failed to store candidate data in central server: ${errorData.message || response.statusText}`)
       }
 
-      setSuccess("Candidate registered successfully!");
-      // Reset form
-      setFormData({
-        nationalId: "",
-        name: "",
-        party: "",
-        faceId: null,
-        fingerprint: null,
-        fathersName: "",
-        mothersName: "",
-        dateOfBirth: "",
-        bloodGroup: "",
-        postOffice: "",
-        postCode: "",
-        location: ""
-      });
-      setIsFaceCaptured(false);
-      setIsFingerprintCaptured(false);
-      setActiveTab("form");
+      toast({
+        title: "Success",
+        description: "Candidate registered successfully on both blockchain and central server"
+      })
+      navigate("/admin")
     } catch (err) {
-      console.error("Error registering candidate:", err);
-      if (err instanceof Error) {
-        if (err.message.includes("Only Election Commission")) {
-          setError("Only the Election Commission can register candidates");
-        } else if (err.message.includes("National ID already registered")) {
-          setError("This National ID is already registered");
-        } else {
-          setError(err.message);
-        }
-      } else {
-        setError("An unexpected error occurred");
-      }
+      console.error('Registration error:', err)
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to register candidate",
+        variant: "destructive"
+      })
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle>Register New Candidate</CardTitle>
-        <CardDescription>
-          Fill in the candidate's details and optionally capture biometric data
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="form">Registration Form</TabsTrigger>
-            <TabsTrigger value="preview">Preview</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="form" className="space-y-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="nationalId">National ID</Label>
-                  <Input
-                    id="nationalId"
-                    type="number"
-                    value={formData.nationalId}
-                    onChange={(e) => handleInputChange('nationalId', e.target.value)}
-                    placeholder="Enter National ID"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="name">Candidate Name</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    placeholder="Enter candidate's full name"
-                    required
-                  />
-                </div>
+    <div className="container mx-auto p-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Register Candidate</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="name">Full Name</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
               </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="fathersName">Father's Name</Label>
-                  <Input
-                    id="fathersName"
-                    value={formData.fathersName}
-                    onChange={(e) => handleInputChange('fathersName', e.target.value)}
-                    placeholder="Enter father's name"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="mothersName">Mother's Name</Label>
-                  <Input
-                    id="mothersName"
-                    value={formData.mothersName}
-                    onChange={(e) => handleInputChange('mothersName', e.target.value)}
-                    placeholder="Enter mother's name"
-                    required
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="party">Party</Label>
+                <Input
+                  id="party"
+                  value={formData.party}
+                  onChange={(e) => setFormData({ ...formData, party: e.target.value })}
+                  required
+                />
               </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                  <Input
-                    id="dateOfBirth"
-                    type="date"
-                    value={formData.dateOfBirth}
-                    onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bloodGroup">Blood Group</Label>
-                  <Input
-                    id="bloodGroup"
-                    value={formData.bloodGroup}
-                    onChange={(e) => handleInputChange('bloodGroup', e.target.value)}
-                    placeholder="Enter blood group"
-                    required
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="nationalId">National ID</Label>
+                <Input
+                  id="nationalId"
+                  value={formData.nationalId}
+                  onChange={(e) => setFormData({ ...formData, nationalId: e.target.value })}
+                  required
+                  pattern="\d{10}"
+                  title="Must be 10 digits"
+                />
               </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="postOffice">Post Office</Label>
-                  <Input
-                    id="postOffice"
-                    value={formData.postOffice}
-                    onChange={(e) => handleInputChange('postOffice', e.target.value)}
-                    placeholder="Enter post office"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="postCode">Post Code</Label>
-                  <Input
-                    id="postCode"
-                    type="number"
-                    value={formData.postCode}
-                    onChange={(e) => handleInputChange('postCode', e.target.value)}
-                    placeholder="Enter post code"
-                    required
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="fathersName">Father's Name</Label>
+                <Input
+                  id="fathersName"
+                  value={formData.fathersName}
+                  onChange={(e) => setFormData({ ...formData, fathersName: e.target.value })}
+                  required
+                />
               </div>
-
+              <div className="space-y-2">
+                <Label htmlFor="mothersName">Mother's Name</Label>
+                <Input
+                  id="mothersName"
+                  value={formData.mothersName}
+                  onChange={(e) => setFormData({ ...formData, mothersName: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Date of Birth</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !formData.dateOfBirth && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.dateOfBirth ? format(formData.dateOfBirth, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={formData.dateOfBirth}
+                      onSelect={(date: Date | undefined) => date && setFormData({ ...formData, dateOfBirth: date })}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="bloodGroup">Blood Group</Label>
+                <Select
+                  value={formData.bloodGroup}
+                  onValueChange={(value: string) => setFormData({ ...formData, bloodGroup: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select blood group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bloodGroups.map((group) => (
+                      <SelectItem key={group} value={group}>
+                        {group}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="postOffice">Post Office</Label>
+                <Input
+                  id="postOffice"
+                  value={formData.postOffice}
+                  onChange={(e) => setFormData({ ...formData, postOffice: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="postCode">Post Code</Label>
+                <Input
+                  id="postCode"
+                  type="number"
+                  value={formData.postCode}
+                  onChange={(e) => setFormData({ ...formData, postCode: parseInt(e.target.value) || 0 })}
+                  required
+                  min="1"
+                  max="9999"
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="location">Location</Label>
                 <Input
                   id="location"
                   value={formData.location}
-                  onChange={(e) => handleInputChange('location', e.target.value)}
-                  placeholder="Enter location"
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   required
                 />
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="party">Political Party</Label>
-                <Input
-                  id="party"
-                  value={formData.party}
-                  onChange={(e) => handleInputChange('party', e.target.value)}
-                  placeholder="Enter political party (optional)"
+            <div className="space-y-4">
+              <Label>Biometric Verification</Label>
+              <div className="grid gap-4 md:grid-cols-2">
+                <FaceCapture
+                  nid={formData.nationalId}
+                  onCaptureComplete={(success) => setBiometricStatus(prev => ({ ...prev, faceCaptured: success }))}
                 />
-              </div>
-
-              <div className="space-y-4">
-                <Label>Face Capture</Label>
-                <FaceCapture 
-                  nid={formData.nationalId} 
-                  onCaptureComplete={handleFaceCaptureComplete}
-                />
-                {isFaceCaptured && (
-                  <p className="text-sm text-green-600">
-                    Face captured successfully
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label>Fingerprint Capture (Optional)</Label>
-                <FingerprintCapture 
-                  onCapture={handleFingerprintCapture}
-                  onRetake={handleFingerprintRetake}
-                  isCaptured={isFingerprintCaptured}
-                />
-              </div>
-
-              <div className="flex justify-between pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setActiveTab("preview")}
-                  disabled={!formData.name || !formData.nationalId}
-                >
-                  Preview
-                </Button>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Registering...
-                    </>
-                  ) : (
-                    "Register Candidate"
-                  )}
-                </Button>
-              </div>
-            </form>
-          </TabsContent>
-
-          <TabsContent value="preview">
-            <Card>
-              <CardHeader>
-                <CardTitle>Candidate Preview</CardTitle>
-                <CardDescription>Review the candidate's information before submission</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <Label className="text-muted-foreground">National ID</Label>
-                    <p>{formData.nationalId}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground">Name</Label>
-                    <p>{formData.name}</p>
-                  </div>
+                <div className="space-y-2">
+                  <Label>Fingerprint Capture (Optional)</Label>
+                  <FingerprintCapture
+                    onCapture={(data) => {
+                      // TODO: Store fingerprint data
+                      setBiometricStatus(prev => ({ ...prev, fingerprintCaptured: true }))
+                    }}
+                    onRetake={() => setBiometricStatus(prev => ({ ...prev, fingerprintCaptured: false }))}
+                    isCaptured={biometricStatus.fingerprintCaptured}
+                  />
                 </div>
-                <div>
-                  <Label className="text-muted-foreground">Political Party</Label>
-                  <p>{formData.party || "Independent"}</p>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <Label className="text-muted-foreground">Face ID Status</Label>
-                    <p>{isFaceCaptured ? "Captured" : "Not Captured"}</p>
-                  </div>
-                  <div>
-                    <Label className="text-muted-foreground">Fingerprint Status</Label>
-                    <p>{isFingerprintCaptured ? "Captured" : "Not Captured"}</p>
-                  </div>
-                </div>
-                <div className="flex justify-end gap-4 pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={() => setActiveTab("form")}
-                  >
-                    Back to Form
-                  </Button>
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Registering...
-                      </>
-                    ) : (
-                      "Confirm Registration"
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+              </div>
+            </div>
+
+            <Button type="submit" disabled={isLoading} className="w-full">
+              {isLoading ? "Registering..." : "Register Candidate"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   )
-} 
+}

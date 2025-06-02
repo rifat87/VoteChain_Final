@@ -1,85 +1,79 @@
-import { useEffect, useState } from "react"
-import { useLocalContract } from "@/local/hooks/useLocalContract"
-import { useLocalWallet } from "@/local/hooks/useLocalWallet"
+import { useState } from "react"
+import { useWallet } from "@/components/ui/wallet-provider"
 import { CandidateList } from "@/components/Dashboard/CandidateList"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useNavigate } from "react-router-dom"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { VoterRegistration } from "./VoterRegistration"
+
+// Demo candidate data
+const demoCandidates = [
+  {
+    id: 1,
+    name: "Alice Johnson",
+    nationalId: "1234567890",
+    location: "New York",
+    voteCount: 42,
+    isVerified: true,
+  },
+  {
+    id: 2,
+    name: "Bob Smith",
+    nationalId: "9876543210",
+    location: "California",
+    voteCount: 37,
+    isVerified: false,
+  },
+]
 
 export function AdminDashboard() {
   const navigate = useNavigate()
-  const { getCandidates, endElection } = useLocalContract()
-  const { address } = useLocalWallet()
-  const [candidates, setCandidates] = useState<any[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchCandidates = async () => {
-      try {
-        const data = await getCandidates()
-        setCandidates(data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch candidates')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchCandidates()
-  }, [getCandidates])
+  const { address } = useWallet()
+  const [candidates] = useState(demoCandidates)
+  const [isLoading] = useState(false)
+  const [error] = useState<string | null>(null)
 
   const handleEndElection = async () => {
-    try {
-      await endElection()
-      navigate('/admin/results')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to end election')
-    }
+    // Demo: just navigate, no contract call
+    navigate('/admin/results')
   }
 
-  if (isLoading) {
-    return <div>Loading...</div>
+  const handleRegisterCandidate = () => {
+    navigate('/admin/register-candidate')
   }
 
-  if (error) {
-    return <div>Error: {error}</div>
+  const handleRegisterVoter = () => {
+    navigate('/admin/register-voter')
   }
+
+  if (isLoading) return <div>Loading...</div>
+  if (error) return <div>Error: {error}</div>
 
   return (
-    <div className="container mx-auto p-4">
-      <Tabs defaultValue="overview">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="voters">Voter Registration</TabsTrigger>
-        </TabsList>
-        <TabsContent value="overview">
-          <Card>
-            <CardHeader>
-              <CardTitle>Admin Dashboard</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="mb-4">Your address: {address}</p>
-              <CandidateList 
-                candidates={candidates} 
-                isLoading={isLoading}
-              />
-              <Button 
-                onClick={handleEndElection}
-                className="mt-4"
-                variant="destructive"
-              >
-                End Election
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="voters">
-          <VoterRegistration />
-        </TabsContent>
-      </Tabs>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Admin Dashboard</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold">Candidates</h2>
+              <div className="flex gap-2">
+                <Button onClick={handleRegisterVoter} variant="default">
+                  Register Voter
+                </Button>
+                <Button onClick={handleRegisterCandidate} variant="default">
+                  Register Candidate
+                </Button>
+              </div>
+            </div>
+            <CandidateList candidates={candidates} isLoading={false} />
+            <Button className="mt-4" onClick={handleEndElection}>
+              End Election
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 } 

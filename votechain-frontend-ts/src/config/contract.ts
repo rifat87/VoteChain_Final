@@ -1,200 +1,382 @@
-// Contract address - replace with your deployed contract address
-export const contractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
+import { ethers } from 'ethers';
 
-// Contract ABI - replace with your contract's ABI
+// Contract configuration for Anvil
+export const contractAddress = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
+
+// Define the contract interface
+export interface LocalVotingContract extends ethers.Contract {
+  // Candidate functions
+  registerCandidate(
+    name: string,
+    nationalId: string,
+    location: string,
+    faceHash: string
+  ): Promise<ethers.ContractTransactionResponse>;
+
+  getCandidates(): Promise<Array<{
+    id: bigint;
+    name: string;
+    nationalId: string;
+    location: string;
+    voteCount: bigint;
+    isVerified: boolean;
+  }>>;
+
+  // Voter functions
+  registerVoter(
+    name: string,
+    nationalId: string,
+    location: string,
+    faceHash: string
+  ): Promise<ethers.ContractTransactionResponse>;
+
+  getVoter(voterId: bigint): Promise<{
+    id: bigint;
+    name: string;
+    nationalId: string;
+    location: string;
+    faceHash: string;
+    isVerified: boolean;
+  }>;
+
+  registerVoterAddress(voter: string): Promise<ethers.ContractTransactionResponse>;
+  verifyVoter(voterId: bigint): Promise<ethers.ContractTransactionResponse>;
+  verifyVoterFaceHash(voterId: bigint, providedHash: string): Promise<boolean>;
+
+  // Voting functions
+  castVote(candidateId: bigint): Promise<ethers.ContractTransactionResponse>;
+  endElection(): Promise<ethers.ContractTransactionResponse>;
+  electionCommission(): Promise<string>;
+}
+
 export const contractABI = [
+  // Candidate functions
   {
-    "type": "constructor",
-    "inputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "candidateCount",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "candidates",
     "inputs": [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "id",
-        "type": "uint256",
-        "internalType": "uint256"
+        "internalType": "string",
+        "name": "_name",
+        "type": "string"
       },
       {
-        "name": "name",
-        "type": "string",
-        "internalType": "string"
+        "internalType": "string",
+        "name": "_nationalId",
+        "type": "string"
       },
       {
-        "name": "voteCount",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "castVote",
-    "inputs": [
+        "internalType": "string",
+        "name": "_location",
+        "type": "string"
+      },
       {
-        "name": "_candidateId",
-        "type": "uint256",
-        "internalType": "uint256"
+        "internalType": "string",
+        "name": "_faceHash",
+        "type": "string"
       }
     ],
+    "name": "registerCandidate",
     "outputs": [],
-    "stateMutability": "nonpayable"
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    "type": "function",
-    "name": "electionCommission",
     "inputs": [],
+    "name": "getCandidates",
     "outputs": [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "electionEnded",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "endElection",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "getCandidate",
-    "inputs": [
-      {
-        "name": "_candidateId",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "tuple",
-        "internalType": "struct Voting.Candidate",
         "components": [
           {
+            "internalType": "uint256",
             "name": "id",
-            "type": "uint256",
-            "internalType": "uint256"
+            "type": "uint256"
           },
           {
+            "internalType": "string",
             "name": "name",
-            "type": "string",
-            "internalType": "string"
+            "type": "string"
           },
           {
+            "internalType": "string",
+            "name": "nationalId",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "location",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
             "name": "voteCount",
-            "type": "uint256",
-            "internalType": "uint256"
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "isVerified",
+            "type": "bool"
           }
-        ]
+        ],
+        "internalType": "struct LocalVoting.Candidate[]",
+        "name": "",
+        "type": "tuple[]"
       }
     ],
-    "stateMutability": "view"
+    "stateMutability": "view",
+    "type": "function"
   },
+  // Voter functions
   {
-    "type": "function",
-    "name": "hasVoted",
     "inputs": [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "registerCandidate",
-    "inputs": [
-      {
+        "internalType": "string",
         "name": "_name",
-        "type": "string",
-        "internalType": "string"
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_nationalId",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_location",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_faceHash",
+        "type": "string"
       }
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "registerVoter",
-    "inputs": [
-      {
-        "name": "_voter",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
     "outputs": [],
-    "stateMutability": "nonpayable"
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
-    "type": "function",
-    "name": "registeredVoters",
     "inputs": [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
+        "internalType": "uint256",
+        "name": "_voterId",
+        "type": "uint256"
       }
     ],
+    "name": "getVoter",
     "outputs": [
       {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "nationalId",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "location",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "faceHash",
+            "type": "string"
+          },
+          {
+            "internalType": "bool",
+            "name": "isVerified",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct LocalVoting.Voter",
         "name": "",
-        "type": "bool",
-        "internalType": "bool"
+        "type": "tuple"
       }
     ],
-    "stateMutability": "view"
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_voter",
+        "type": "address"
+      }
+    ],
+    "name": "registerVoterAddress",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_voterId",
+        "type": "uint256"
+      }
+    ],
+    "name": "verifyVoter",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_voterId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "_providedHash",
+        "type": "string"
+      }
+    ],
+    "name": "verifyVoterFaceHash",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  // Voting functions
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "candidateId",
+        "type": "uint256"
+      }
+    ],
+    "name": "castVote",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "endElection",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "electionCommission",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  // Events
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "nationalId",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "faceHash",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "CandidateRegistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "nationalId",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "faceHash",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "VoterRegistered",
+    "type": "event"
   }
-] 
- 
+];
+
+// Helper function to create contract instance
+export function createContract(signer: ethers.Signer) {
+  return new ethers.Contract(contractAddress, contractABI, signer);
+}
+
+// Helper function to get provider
+export function getProvider() {
+  return new ethers.JsonRpcProvider('http://localhost:8545');
+}
+
+// Helper function to get signer
+export async function getSigner() {
+  const provider = getProvider();
+  return provider.getSigner();
+} 

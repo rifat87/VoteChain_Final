@@ -1,163 +1,164 @@
-import { body, query } from 'express-validator';
+import { body, query, param } from 'express-validator';
 
 // Validation for creating a voter
 export const createVoterValidation = [
   body('nationalId')
-    .isInt()
-    .withMessage('National ID must be a number')
     .notEmpty()
-    .withMessage('National ID is required'),
+    .withMessage('National ID is required')
+    .isString()
+    .withMessage('National ID must be a string'),
   
   body('name')
-    .trim()
     .notEmpty()
     .withMessage('Name is required')
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Name must be between 2 and 100 characters'),
+    .isString()
+    .withMessage('Name must be a string'),
   
   body('fathersName')
-    .trim()
     .notEmpty()
     .withMessage('Father\'s name is required')
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Father\'s name must be between 2 and 100 characters'),
+    .isString()
+    .withMessage('Father\'s name must be a string'),
   
   body('mothersName')
-    .trim()
     .notEmpty()
     .withMessage('Mother\'s name is required')
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Mother\'s name must be between 2 and 100 characters'),
+    .isString()
+    .withMessage('Mother\'s name must be a string'),
   
   body('dateOfBirth')
-    .isISO8601()
-    .withMessage('Invalid date format')
     .notEmpty()
-    .withMessage('Date of birth is required'),
+    .withMessage('Date of birth is required')
+    .isISO8601()
+    .withMessage('Date of birth must be a valid date'),
   
   body('bloodGroup')
-    .trim()
     .notEmpty()
     .withMessage('Blood group is required')
-    .isIn(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'])
-    .withMessage('Invalid blood group'),
+    .isString()
+    .withMessage('Blood group must be a string'),
   
   body('postOffice')
-    .trim()
     .notEmpty()
     .withMessage('Post office is required')
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Post office must be between 2 and 100 characters'),
+    .isString()
+    .withMessage('Post office must be a string'),
   
   body('postCode')
-    .isInt()
-    .withMessage('Post code must be a number')
     .notEmpty()
-    .withMessage('Post code is required'),
+    .withMessage('Post code is required')
+    .isNumeric()
+    .withMessage('Post code must be a number'),
   
   body('location')
-    .trim()
     .notEmpty()
     .withMessage('Location is required')
-    .isLength({ min: 2, max: 200 })
-    .withMessage('Location must be between 2 and 200 characters'),
+    .isString()
+    .withMessage('Location must be a string'),
   
   body('faceId')
-    .trim()
     .notEmpty()
-    .withMessage('Face ID is required'),
+    .withMessage('Face ID is required')
+    .isString()
+    .withMessage('Face ID must be a string'),
   
   body('fingerprint')
-    .trim()
+    .optional()
+    .isString()
+    .withMessage('Fingerprint must be a string'),
+  
+  body('blockchainId')
     .notEmpty()
-    .withMessage('Fingerprint is required')
+    .withMessage('Blockchain ID is required')
+    .isString()
+    .withMessage('Blockchain ID must be a string')
+    .matches(/^0x[a-fA-F0-9]{64}$/)
+    .withMessage('Blockchain ID must be a valid transaction hash')
 ];
 
 // Validation for updating a voter
 export const updateVoterValidation = [
   query('id')
+    .notEmpty()
+    .withMessage('Voter ID is required')
     .isMongoId()
     .withMessage('Invalid voter ID'),
   
   body('nationalId')
     .optional()
-    .isInt()
-    .withMessage('National ID must be a number'),
+    .isString()
+    .withMessage('National ID must be a string'),
   
   body('name')
     .optional()
-    .trim()
-    .notEmpty()
-    .withMessage('Name is required')
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Name must be between 2 and 100 characters'),
+    .isString()
+    .withMessage('Name must be a string'),
   
   body('fathersName')
     .optional()
-    .trim()
-    .notEmpty()
-    .withMessage('Father\'s name is required')
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Father\'s name must be between 2 and 100 characters'),
+    .isString()
+    .withMessage('Father\'s name must be a string'),
   
   body('mothersName')
     .optional()
-    .trim()
-    .notEmpty()
-    .withMessage('Mother\'s name is required')
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Mother\'s name must be between 2 and 100 characters'),
+    .isString()
+    .withMessage('Mother\'s name must be a string'),
   
   body('dateOfBirth')
     .optional()
     .isISO8601()
-    .withMessage('Invalid date format'),
+    .withMessage('Date of birth must be a valid date'),
   
   body('bloodGroup')
     .optional()
-    .trim()
-    .notEmpty()
-    .withMessage('Blood group is required')
-    .isIn(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'])
-    .withMessage('Invalid blood group'),
+    .isString()
+    .withMessage('Blood group must be a string'),
   
   body('postOffice')
     .optional()
-    .trim()
-    .notEmpty()
-    .withMessage('Post office is required')
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Post office must be between 2 and 100 characters'),
+    .isString()
+    .withMessage('Post office must be a string'),
   
   body('postCode')
     .optional()
-    .isInt()
-    .withMessage('Post code must be a number'),
+    .isString()
+    .withMessage('Post code must be a string'),
   
   body('location')
     .optional()
-    .trim()
-    .notEmpty()
-    .withMessage('Location is required')
-    .isLength({ min: 2, max: 200 })
-    .withMessage('Location must be between 2 and 200 characters'),
+    .isString()
+    .withMessage('Location must be a string'),
   
   body('faceId')
     .optional()
-    .trim()
-    .notEmpty()
-    .withMessage('Face ID is required'),
+    .isString()
+    .withMessage('Face ID must be a string'),
   
   body('fingerprint')
     .optional()
-    .trim()
-    .notEmpty()
-    .withMessage('Fingerprint is required')
+    .isString()
+    .withMessage('Fingerprint must be a string'),
+  
+  body('walletAddress')
+    .optional()
+    .isString()
+    .withMessage('Wallet address must be a string')
+    .matches(/^0x[a-fA-F0-9]{40}$/)
+    .withMessage('Wallet address must be a valid Ethereum address'),
+  
+  body('blockchainId')
+    .optional()
+    .isString()
+    .withMessage('Blockchain ID must be a string')
+    .matches(/^0x[a-fA-F0-9]{64}$/)
+    .withMessage('Blockchain ID must be a valid transaction hash')
 ];
 
 // Validation for getting voter by ID
 export const getVoterByIdValidation = [
   query('id')
+    .notEmpty()
+    .withMessage('Voter ID is required')
     .isMongoId()
     .withMessage('Invalid voter ID')
 ];
@@ -165,13 +166,34 @@ export const getVoterByIdValidation = [
 // Validation for getting voter by wallet address
 export const getVoterByWalletValidation = [
   query('walletAddress')
-    .isEthereumAddress()
-    .withMessage('Invalid wallet address')
+    .notEmpty()
+    .withMessage('Wallet address is required')
+    .isString()
+    .withMessage('Wallet address must be a string')
+    .matches(/^0x[a-fA-F0-9]{40}$/)
+    .withMessage('Wallet address must be a valid Ethereum address')
 ];
 
 // Validation for deleting a voter
 export const deleteVoterValidation = [
   query('id')
+    .notEmpty()
+    .withMessage('Voter ID is required')
     .isMongoId()
     .withMessage('Invalid voter ID')
+];
+
+// Validation for verifying a voter
+export const verifyVoterValidation = [
+  query('id')
+    .notEmpty()
+    .withMessage('Voter ID is required')
+    .isMongoId()
+    .withMessage('Invalid voter ID'),
+  body('verificationNotes')
+    .optional()
+    .isString()
+    .withMessage('Verification notes must be a string')
+    .isLength({ max: 500 })
+    .withMessage('Verification notes must not exceed 500 characters')
 ]; 

@@ -1,152 +1,157 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { ethers } from 'ethers'
-import { 
-  LOCAL_CONTRACT_ADDRESS,
-  LOCAL_CONTRACT_ABI,
-  createLocalContract,
-  getLocalProvider,
-  getLocalSigner
-} from '@/local/contracts/local-contract'
+import { createContract, getProvider } from '@/config/contract'
+import { useWallet } from '@/components/ui/wallet-provider'
+
+export interface Candidate {
+  id: number
+  name: string
+  nationalId: string
+  location: string
+  voteCount: number
+  isVerified: boolean
+}
 
 export function useContract() {
   const [contract, setContract] = useState<ethers.Contract | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<Error | null>(null)
+  const [isInitialized, setIsInitialized] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const { isConnected, signer, address } = useWallet()
+  const lastAddress = useRef<string | null>(null)
 
-  // Function to get contract with signer for transactions
-  const getContractWithSigner = async () => {
-    if (!window.ethereum) {
-      throw new Error('MetaMask is not installed')
-    }
-    const provider = new ethers.BrowserProvider(window.ethereum)
-    const signer = await provider.getSigner()
-    return createLocalContract(signer)
-  }
-
-  // Function to get read-only contract
-  const getReadOnlyContract = async () => {
-    const provider = new ethers.JsonRpcProvider('http://localhost:8545') // Use your local network URL
-    return createLocalContract(provider)
-  }
-
-  const getCandidates = async () => {
-    try {
-      setIsLoading(true)
-      const readOnlyContract = await getReadOnlyContract()
-      const candidates = await readOnlyContract.getCandidates()
-      return candidates
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to get candidates')
-      throw err
-    } finally {
+  useEffect(() => {
+    // Reset state if disconnected
+    if (!isConnected || !address) {
+      setContract(null)
+      setIsInitialized(false)
+      setIsAdmin(false)
       setIsLoading(false)
+      lastAddress.current = null
+      return
+    }
+    // Only run if address actually changes
+    if (lastAddress.current === address) return
+    lastAddress.current = address
+    if (!signer) return // Guard: signer must be non-null
+    setIsLoading(true)
+    setError(null)
+    const initializeContract = async () => {
+      try {
+        const contractInstance = createContract(signer)
+        console.log('Contract instance created:', contractInstance)
+        setContract(contractInstance)
+        const commission = await contractInstance.electionCommission()
+        console.log('Election commission:', commission)
+        setIsInitialized(commission !== ethers.ZeroAddress)
+        setIsAdmin(address.toLowerCase() === commission.toLowerCase())
+      } catch (err) {
+        console.error('Error initializing contract:', err)
+        setError(err as Error)
+        setIsInitialized(false)
+        setIsAdmin(false)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    initializeContract()
+  }, [isConnected, signer, address])
+
+  const getCandidates = async (): Promise<Candidate[]> => {
+    if (!contract) throw new Error('Contract not initialized')
+    try {
+      const candidates = await contract.getCandidates()
+      if (!candidates) return []
+      return candidates.map((c: any) => ({
+        id: Number(c.id),
+        name: c.name,
+        nationalId: c.nationalId,
+        location: c.location,
+        voteCount: Number(c.voteCount),
+        isVerified: c.isVerified
+      }))
+    } catch (err) {
+      throw new Error('Failed to fetch candidates: ' + (err instanceof Error ? err.message : String(err)))
+    }
+  }
+
+  const registerVoter = async (name: string, nationalId: string, location: string, faceHash: string) => {
+    if (!contract) throw new Error('Contract not initialized')
+    try {
+      console.log('Contract:', contract);
+      console.log('Signer:', contract.signer);
+      console.log('Parameters:', {
+        name,
+        nationalId,
+        location,
+        faceHash
+      });
+      
+      const tx = await contract.registerVoter(
+        name,
+        nationalId,
+        location,
+        faceHash
+      );
+      console.log('Transaction sent:', tx);
+      return tx;
+    } catch (error) {
+      console.error("Error registering voter:", error);
+      throw error;
     }
   }
 
   const castVote = async (candidateId: number) => {
-    const contractWithSigner = await getContractWithSigner()
-    const tx = await contractWithSigner.castVote(candidateId)
-    const receipt = await tx.wait()
-    if (!receipt || !receipt.transactionHash) {
-      throw new Error('Failed to get transaction hash from blockchain')
-    }
-    return receipt
+    if (!contract) throw new Error('Contract not initialized')
+    const tx = await contract.castVote(candidateId)
+    await tx.wait()
   }
 
-  const isAdmin = async (address: string) => {
-    const contractWithSigner = await getContractWithSigner()
-    const commissionAddress = await contractWithSigner.electionCommission()
-    return address.toLowerCase() === commissionAddress.toLowerCase()
-  }
-
-  const registerVoter = async (voterAddress: string) => {
-    const contractWithSigner = await getContractWithSigner()
-    const tx = await contractWithSigner.registerVoter(voterAddress)
-    const receipt = await tx.wait()
-    if (!receipt || !receipt.transactionHash) {
-      throw new Error('Failed to get transaction hash from blockchain')
-    }
-    return receipt
-  }
-
-  const registerCandidate = async (
-    name: string,
-    nationalId: string,
-    location: string
-  ) => {
+  const registerCandidate = async (name: string, nationalId: string, location: string, faceHash: string) => {
+    if (!contract) throw new Error("Contract not initialized");
     try {
-      const contractWithSigner = await getContractWithSigner()
-      console.log('Sending transaction...')
-      const tx = await contractWithSigner.registerCandidate(
+      console.log('Contract:', contract);
+      console.log('Signer:', contract.signer);
+      console.log('Parameters:', {
         name,
         nationalId,
-        location
-      )
-      console.log('Transaction sent:', tx.hash)
+        location,
+        faceHash
+      });
       
-      console.log('Waiting for transaction to be mined...')
-      const receipt = await tx.wait()
-      console.log('Transaction mined:', receipt)
-      
-      if (!receipt || !receipt.hash) {
-        throw new Error('Failed to get transaction hash from blockchain')
-      }
-      
-      return receipt
+      // Call the contract function with the string parameter
+      const tx = await contract.registerCandidate(
+        name,
+        nationalId,
+        location,
+        faceHash
+      );
+      console.log('Transaction sent:', tx);
+      return tx;
     } catch (error) {
-      console.error('Error in registerCandidate:', error)
-      throw error
+      console.error("Error registering candidate:", error);
+      throw error;
     }
-  }
-
-  const startElection = async () => {
-    const contractWithSigner = await getContractWithSigner()
-    const tx = await contractWithSigner.startElection()
-    const receipt = await tx.wait()
-    if (!receipt || !receipt.transactionHash) {
-      throw new Error('Failed to get transaction hash from blockchain')
-    }
-    return receipt
-  }
+  };
 
   const endElection = async () => {
-    const contractWithSigner = await getContractWithSigner()
-    const tx = await contractWithSigner.endElection()
-    const receipt = await tx.wait()
-    if (!receipt || !receipt.transactionHash) {
-      throw new Error('Failed to get transaction hash from blockchain')
-    }
-    return receipt
-  }
-
-  const isRegisteredVoter = async (address: string) => {
-    const contractWithSigner = await getContractWithSigner()
-    return contractWithSigner.isRegisteredVoter(address)
-  }
-
-  const isVoted = async (address: string) => {
-    const contractWithSigner = await getContractWithSigner()
-    return contractWithSigner.isVoted(address)
-  }
-
-  const getVoteCount = async (candidateId: number) => {
-    const readOnlyContract = await getReadOnlyContract()
-    return readOnlyContract.getVoteCount(candidateId)
+    if (!contract) throw new Error('Contract not initialized')
+    const tx = await contract.endElection()
+    await tx.wait()
   }
 
   return {
+    contract,
     isLoading,
     error,
-    getCandidates,
-    castVote,
+    isInitialized,
     isAdmin,
+    getCandidates,
     registerVoter,
+    castVote,
     registerCandidate,
-    startElection,
-    endElection,
-    isRegisteredVoter,
-    isVoted,
-    getVoteCount,
+    endElection
   }
 }
 
@@ -161,7 +166,8 @@ export function useElectionState() {
     try {
       setIsLoading(true)
       setError(null)
-      const contract = await getContract()
+      const provider = getProvider()
+      const contract = createContract(await provider.getSigner())
       const [ended, count] = await Promise.all([
         contract.electionEnded(),
         contract.candidateCount()
@@ -188,25 +194,22 @@ export function useElectionState() {
 export function useCandidates() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
-  const [candidates, setCandidates] = useState<Array<{
-    id: number
-    name: string
-    voteCount: number
-  }>>([])
+  const [candidates, setCandidates] = useState<Candidate[]>([])
 
   const fetchCandidates = useCallback(async () => {
     try {
       setIsLoading(true)
       setError(null)
-      const contract = await getContract()
-      const count = await contract.candidateCount()
-      const candidatesData = await Promise.all(
-        Array.from({ length: Number(count) }, (_, i) => contract.candidates(i))
-      )
-      setCandidates(candidatesData.map(c => ({
+      const provider = getProvider()
+      const contract = createContract(await provider.getSigner())
+      const candidates = await contract.getCandidates()
+      setCandidates(candidates.map((c: any) => ({
         id: Number(c.id),
         name: c.name,
-        voteCount: Number(c.voteCount)
+        nationalId: c.nationalId,
+        location: c.location,
+        voteCount: Number(c.voteCount),
+        isVerified: c.isVerified
       })))
     } catch (error) {
       setError(error instanceof Error ? error : new Error('Failed to fetch candidates'))
@@ -215,12 +218,13 @@ export function useCandidates() {
     }
   }, [])
 
-  const registerCandidate = useCallback(async (name: string) => {
+  const registerCandidate = useCallback(async (name: string, nationalId: string, location: string) => {
     try {
       setIsLoading(true)
       setError(null)
-      const contract = await getContract()
-      const tx = await contract.registerCandidate(name)
+      const provider = getProvider()
+      const contract = createContract(await provider.getSigner())
+      const tx = await contract.registerCandidate(name, nationalId, location)
       await tx.wait()
       await fetchCandidates() // Refresh the list
     } catch (error) {
@@ -249,10 +253,11 @@ export function useVoting() {
     try {
       setIsLoading(true)
       setError(null)
-      const contract = await getContract()
+      const provider = getProvider()
+      const contract = createContract(await provider.getSigner())
       const [hasVoted, isRegistered] = await Promise.all([
-        contract.hasVoted(address),
-        contract.registeredVoters(address)
+        contract.isVoted(address),
+        contract.isRegisteredVoter(address)
       ])
       return { hasVoted, isRegistered }
     } catch (error) {

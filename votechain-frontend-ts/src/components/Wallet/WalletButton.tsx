@@ -11,7 +11,7 @@ import {
 import { useToast } from "@/components/ui/use-toast"
 
 export function WalletButton() {
-  const { address, isConnected, connect, disconnect } = useWallet()
+  const { address, isConnected, isWalletChecked, connect, disconnect } = useWallet()
   const [isConnecting, setIsConnecting] = useState(false)
   const { toast } = useToast()
 
@@ -62,6 +62,11 @@ export function WalletButton() {
     }
   }
 
+  // Only show wallet button UI if wallet is checked
+  if (!isWalletChecked) {
+    return null // or a loader if you prefer
+  }
+
   if (!isConnected) {
     return (
       <Button
@@ -69,6 +74,7 @@ export function WalletButton() {
         size="sm"
         onClick={handleConnect}
         disabled={isConnecting}
+        className="w-full"
       >
         {isConnecting ? "Connecting..." : "Connect Wallet"}
       </Button>
@@ -78,18 +84,20 @@ export function WalletButton() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm">
-          {address?.slice(0, 6)}...{address?.slice(-4)}
+        <Button variant="outline" size="sm" className="w-full">
+          <span className="truncate">
+            {address?.slice(0, 6)}...{address?.slice(-4)}
+          </span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={copyAddress}>
+      <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuItem onClick={copyAddress} className="cursor-pointer">
           <Copy className="mr-2 h-4 w-4" />
-          Copy Address
+          <span>Copy Address</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleDisconnect}>
+        <DropdownMenuItem onClick={handleDisconnect} className="cursor-pointer text-destructive">
           <LogOut className="mr-2 h-4 w-4" />
-          Disconnect
+          <span>Disconnect</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
