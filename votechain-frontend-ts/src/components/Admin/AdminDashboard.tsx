@@ -67,10 +67,10 @@ export function AdminDashboard() {
                 </Button>
               </div>
             </div>
-            <CandidateList candidates={candidates} isLoading={false} />
-            <Button className="mt-4" onClick={handleEndElection}>
-              End Election
-            </Button>
+              <CandidateList candidates={candidates} isLoading={false} />
+              <Button className="mt-4" onClick={handleEndElection}>
+                End Election
+              </Button>
           </div>
         </CardContent>
       </Card>

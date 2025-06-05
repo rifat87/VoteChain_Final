@@ -9,6 +9,7 @@ import { VoterDashboard } from "@/components/Voter/VoterDashboard"
 import { ErrorBoundary } from "@/components/ui/error-boundary"
 import { RegisterCandidate } from "@/components/Admin/RegisterCandidate"
 import { RegisterVoter } from "@/components/Admin/RegisterVoter"
+import ElectionStatus from "@/components/Admin/ElectionStatus"
 
 export function App() {
   return (
@@ -47,6 +48,7 @@ function AppWithWallet() {
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/register-candidate" element={<RegisterCandidate />} />
         <Route path="/admin/register-voter" element={<RegisterVoter />} />
+        <Route path="/admin/status" element={<ElectionStatus />} />
         <Route path="/voter/*" element={<VoterDashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

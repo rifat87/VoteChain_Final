@@ -2,6 +2,10 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { ethers } from 'ethers'
 import { createContract, getProvider } from '@/config/contract'
 import { useWallet } from '@/components/ui/wallet-provider'
+import { useAccount } from 'wagmi'
+import { useContractRead, useContractWrite, useWaitForTransaction } from 'wagmi'
+import { contractConfig } from '@/config/contracts'
+import { useToast } from '@/components/ui/use-toast'
 
 export interface Candidate {
   id: number
@@ -58,23 +62,36 @@ export function useContract() {
     initializeContract()
   }, [isConnected, signer, address])
 
-  const getCandidates = async (): Promise<Candidate[]> => {
-    if (!contract) throw new Error('Contract not initialized')
-    try {
-      const candidates = await contract.getCandidates()
-      if (!candidates) return []
-      return candidates.map((c: any) => ({
-        id: Number(c.id),
-        name: c.name,
-        nationalId: c.nationalId,
-        location: c.location,
-        voteCount: Number(c.voteCount),
-        isVerified: c.isVerified
-      }))
-    } catch (err) {
-      throw new Error('Failed to fetch candidates: ' + (err instanceof Error ? err.message : String(err)))
+  const getCandidates = useCallback(async (): Promise<Candidate[]> => {
+    if (!contract) {
+      console.log('Contract not initialized');
+      return [];
     }
-  }
+
+    try {
+      console.log('Using initialized contract for getCandidates');
+      const count = await contract.candidateCount();
+      console.log('Total candidates:', count);
+      
+      const candidates: Candidate[] = [];
+      for (let i = 0; i < count; i++) {
+        const candidate = await contract.getCandidate(i);
+        candidates.push({
+          id: Number(candidate.id),
+          name: candidate.name,
+          nationalId: candidate.nationalId,
+          location: candidate.location,
+          voteCount: Number(candidate.voteCount),
+          isVerified: candidate.isVerified
+        });
+      }
+      console.log('Final candidates array:', candidates);
+      return candidates;
+    } catch (error) {
+      console.error('Error fetching candidates:', error);
+      throw error;
+    }
+  }, [contract]);
 
   const registerVoter = async (name: string, nationalId: string, location: string, faceHash: string) => {
     if (!contract) throw new Error('Contract not initialized')

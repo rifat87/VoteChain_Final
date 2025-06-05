@@ -6,6 +6,15 @@ export const contractAddress = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
 // Define the contract interface
 export interface LocalVotingContract extends ethers.Contract {
   // Candidate functions
+  candidateCount(): Promise<bigint>;
+  getCandidate(candidateId: bigint): Promise<{
+    id: bigint;
+    name: string;
+    nationalId: string;
+    location: string;
+    voteCount: bigint;
+    isVerified: boolean;
+  }>;
   registerCandidate(
     name: string,
     nationalId: string,
@@ -51,6 +60,70 @@ export interface LocalVotingContract extends ethers.Contract {
 
 export const contractABI = [
   // Candidate functions
+  {
+    "inputs": [],
+    "name": "candidateCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_candidateId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getCandidate",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "nationalId",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "location",
+            "type": "string"
+          },
+          {
+            "internalType": "uint256",
+            "name": "voteCount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bool",
+            "name": "isVerified",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct LocalVoting.Candidate",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
   {
     "inputs": [
       {
