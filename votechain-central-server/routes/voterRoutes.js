@@ -98,6 +98,12 @@ router.get(
 // Get face hash by national ID
 router.get('/face-hash/:nid', voterController.getFaceHash);
 
+// Train face by national ID
+router.post('/train-face/:nid', voterController.handleTrainFace);
+
+// DEMO: Face verification - will be deleted later
+router.post('/verify-face-demo', voterController.handleVerifyFaceDemo);
+
 // Update voter
 router.put(
   '/voter',

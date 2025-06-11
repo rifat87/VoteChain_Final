@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils"
 import { ethers } from "ethers"
 import { contractAddress, contractABI } from "@/config/contract"
 
+
 interface FormData {
   name: string
   party: string
@@ -60,11 +61,78 @@ export function RegisterCandidate() {
   const [isLoading, setIsLoading] = useState(false)
   const [biometricStatus, setBiometricStatus] = useState({
     faceCaptured: false,
-    fingerprintCaptured: false
+    fingerprintCaptured: false,
+    faceTrainingProgress: 0,
+    isTraining: false
   })
   const [error, setError] = useState<string | null>(null)
 
   const bloodGroups = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+
+  const handleTrainFace = async () => {
+    if (!formData.nationalId.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter National ID first",
+        variant: "destructive"
+      })
+      return
+    }
+
+    if (!biometricStatus.faceCaptured) {
+      toast({
+        title: "Error",
+        description: "Please capture face images first",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setBiometricStatus(prev => ({ 
+      ...prev, 
+      isTraining: true, 
+      faceTrainingProgress: 0 
+    }))
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/candidates/train-face/${formData.nationalId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to train face model')
+      }
+
+      const data = await response.json()
+      
+      setBiometricStatus(prev => ({ 
+        ...prev, 
+        faceTrainingProgress: 100,
+        isTraining: false 
+      }))
+
+      toast({
+        title: "Success",
+        description: "Face training completed successfully"
+      })
+    } catch (err) {
+      console.error('Training error:', err)
+      setBiometricStatus(prev => ({ 
+        ...prev, 
+        isTraining: false,
+        faceTrainingProgress: 0 
+      }))
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to train face model",
+        variant: "destructive"
+      })
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -309,15 +377,50 @@ export function RegisterCandidate() {
             <div className="space-y-4">
               <Label>Biometric Verification</Label>
               <div className="grid gap-4 md:grid-cols-2">
-                <FaceCapture
-                  nid={formData.nationalId}
-                  onCaptureComplete={(success) => setBiometricStatus(prev => ({ ...prev, faceCaptured: success }))}
-                />
+                <div className="space-y-2">
+                  <Label>Face Capture</Label>
+                  <FaceCapture
+                    nid={formData.nationalId}
+                    onCaptureComplete={(success) => {
+                      setBiometricStatus(prev => ({ 
+                        ...prev, 
+                        faceCaptured: success
+                      }))
+                    }}
+                  />
+                  {biometricStatus.faceCaptured && (
+                    <div className="space-y-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleTrainFace}
+                        disabled={biometricStatus.isTraining || !biometricStatus.faceCaptured}
+                        className="w-full"
+                      >
+                        {biometricStatus.isTraining ? "Training..." : "Train Face"}
+                      </Button>
+                      {biometricStatus.isTraining && (
+                        <div className="text-sm text-muted-foreground">
+                          Training face model...
+                        </div>
+                      )}
+                      {biometricStatus.faceTrainingProgress === 100 && (
+                        <div className="text-sm text-green-600">
+                          Face training completed successfully
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {biometricStatus.faceCaptured && !biometricStatus.isTraining && biometricStatus.faceTrainingProgress !== 100 && (
+                    <div className="text-sm text-blue-600">
+                      Face captured successfully. Click "Train Face" to complete the process.
+                    </div>
+                  )}
+                </div>
                 <div className="space-y-2">
                   <Label>Fingerprint Capture (Optional)</Label>
                   <FingerprintCapture
                     onCapture={(data) => {
-                      // TODO: Store fingerprint data
                       setBiometricStatus(prev => ({ ...prev, fingerprintCaptured: true }))
                     }}
                     onRetake={() => setBiometricStatus(prev => ({ ...prev, fingerprintCaptured: false }))}

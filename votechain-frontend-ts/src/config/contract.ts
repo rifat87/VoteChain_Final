@@ -3,61 +3,6 @@ import { ethers } from 'ethers';
 // Contract configuration for Anvil
 export const contractAddress = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
 
-// Define the contract interface
-export interface LocalVotingContract extends ethers.Contract {
-  // Candidate functions
-  candidateCount(): Promise<bigint>;
-  getCandidate(candidateId: bigint): Promise<{
-    id: bigint;
-    name: string;
-    nationalId: string;
-    location: string;
-    voteCount: bigint;
-    isVerified: boolean;
-  }>;
-  registerCandidate(
-    name: string,
-    nationalId: string,
-    location: string,
-    faceHash: string
-  ): Promise<ethers.ContractTransactionResponse>;
-
-  getCandidates(): Promise<Array<{
-    id: bigint;
-    name: string;
-    nationalId: string;
-    location: string;
-    voteCount: bigint;
-    isVerified: boolean;
-  }>>;
-
-  // Voter functions
-  registerVoter(
-    name: string,
-    nationalId: string,
-    location: string,
-    faceHash: string
-  ): Promise<ethers.ContractTransactionResponse>;
-
-  getVoter(voterId: bigint): Promise<{
-    id: bigint;
-    name: string;
-    nationalId: string;
-    location: string;
-    faceHash: string;
-    isVerified: boolean;
-  }>;
-
-  registerVoterAddress(voter: string): Promise<ethers.ContractTransactionResponse>;
-  verifyVoter(voterId: bigint): Promise<ethers.ContractTransactionResponse>;
-  verifyVoterFaceHash(voterId: bigint, providedHash: string): Promise<boolean>;
-
-  // Voting functions
-  castVote(candidateId: bigint): Promise<ethers.ContractTransactionResponse>;
-  endElection(): Promise<ethers.ContractTransactionResponse>;
-  electionCommission(): Promise<string>;
-}
-
 export const contractABI = [
   // Candidate functions
   {

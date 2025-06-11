@@ -28,7 +28,6 @@ def capture_face(nid):
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
     
     img_count = 0
-    success = False
     last_capture_time = 0
     capture_interval = 2  # 2 seconds between captures
 
@@ -40,8 +39,8 @@ def capture_face(nid):
         while img_count < 5:  # Capture 5 images
             ret, frame = camera.read()
             if not ret:
-                print("Failed to capture image from camera.")
-                break
+                print("Failed to capture image from camera")
+                return False
 
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             faces = face_cascade.detectMultiScale(gray, 1.3, 5)
@@ -76,21 +75,21 @@ def capture_face(nid):
             
             # Break if 'q' is pressed
             if key == ord('q'):
-                break
+                print("Face capture process interrupted by user")
+                return False
 
             if img_count >= 5:
-                success = True
                 print("Face capture completed successfully!")
-                break
+                return True
 
     except Exception as e:
         print(f"Error during face capture: {str(e)}")
-        success = False
+        return False
     finally:
         camera.release()
         cv2.destroyAllWindows()
 
-    return success
+    return False
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:

@@ -198,29 +198,125 @@ router.delete('/:id',
 );
 
 router.get('/face-hash/:nid', async (req, res) => {
-    try {
-        const { nid } = req.params;
-        const faceId = generateFaceId(nid);
-        
-        if (!faceId) {
-            return res.status(404).json({
-                success: false,
-                message: 'Face hash not found for this National ID'
-            });
-        }
+  try {
+      const { nid } = req.params;
+      console.log(`[Face Hash] Generating face hash for NID: ${nid}`);
 
-        res.json({
-            success: true,
-            faceHash: faceId
-        });
-    } catch (error) {
-        console.error('Error getting face hash:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to get face hash',
-            error: error.message
-        });
-    }
+      // Generate face ID from existing captured images
+      const faceId = generateFaceId(nid);
+      if (!faceId) {
+          return res.status(404).json({
+              success: false,
+              message: 'Failed to generate face hash from captured images. Please ensure face capture is completed first.'
+          });
+      }
+
+      console.log(`[Face Hash] Successfully generated face hash: ${faceId.substring(0, 16)}...`);
+      res.json({
+          success: true,
+          faceHash: faceId,
+          message: 'Face hash generated successfully'
+      });
+  } catch (error) {
+      console.error('Error generating face hash:', error);
+      res.status(500).json({
+          success: false,
+          message: 'Failed to generate face hash',
+          error: error.message
+      });
+  }
+});
+
+router.post('/train-face/:nid', async (req, res) => {
+  try {
+      const { nid } = req.params;
+      console.log(`[Train Face] Starting face training for NID: ${nid}`);
+
+      // Check if face images exist first
+      const faceRecognitionPath = path.join(__dirname, '../../votechain-face-recognition');
+      const datasetPath = path.join(faceRecognitionPath, 'dataset', nid);
+      
+      if (!fs.existsSync(datasetPath)) {
+          return res.status(404).json({
+              success: false,
+              message: 'Face images not found. Please capture face images first.'
+          });
+      }
+
+      const imageFiles = fs.readdirSync(datasetPath).filter(file => file.endsWith('.jpg'));
+      if (imageFiles.length === 0) {
+          return res.status(404).json({
+              success: false,
+              message: 'No face images found. Please capture face images first.'
+          });
+      }
+
+      console.log(`[Train Face] Found ${imageFiles.length} face images for training`);
+
+      // Import spawn dynamically
+      const { spawn } = await import('child_process');
+      
+      // Run train_faces.py script
+      const trainScript = path.join(faceRecognitionPath, 'train_faces.py');
+      console.log(`[Train Face] Running training script: ${trainScript}`);
+      
+      const trainProcess = spawn('python', [trainScript], {
+          cwd: faceRecognitionPath,
+          stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      let output = '';
+      let errorOutput = '';
+
+      trainProcess.stdout.on('data', (data) => {
+          const message = data.toString();
+          console.log(`[Train Face] Training output: ${message}`);
+          output += message;
+      });
+
+      trainProcess.stderr.on('data', (data) => {
+          const error = data.toString();
+          console.error(`[Train Face] Training error: ${error}`);
+          errorOutput += error;
+      });
+
+      trainProcess.on('close', (code) => {
+          console.log(`[Train Face] Training process finished with code: ${code}`);
+          
+          if (code !== 0) {
+              return res.status(500).json({
+                  success: false,
+                  message: 'Face training failed',
+                  error: errorOutput,
+                  code: code
+              });
+          }
+
+          res.json({
+              success: true,
+              message: 'Face training completed successfully',
+              output: output,
+              nid: nid
+          });
+      });
+
+      trainProcess.on('error', (error) => {
+          console.error(`[Train Face] Process error: ${error}`);
+          res.status(500).json({
+              success: false,
+              message: 'Failed to start training process',
+              error: error.message
+          });
+      });
+
+  } catch (error) {
+      console.error('Error in train-face endpoint:', error);
+      res.status(500).json({
+          success: false,
+          message: 'Failed to train face model',
+          error: error.message
+      });
+  }
 });
 
 export default router; 

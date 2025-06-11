@@ -2,10 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { ethers } from 'ethers'
 import { createContract, getProvider } from '@/config/contract'
 import { useWallet } from '@/components/ui/wallet-provider'
-import { useAccount } from 'wagmi'
-import { useContractRead, useContractWrite, useWaitForTransaction } from 'wagmi'
-import { contractConfig } from '@/config/contracts'
-import { useToast } from '@/components/ui/use-toast'
+
 
 export interface Candidate {
   id: number
