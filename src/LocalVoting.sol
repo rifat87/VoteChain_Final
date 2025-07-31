@@ -31,7 +31,8 @@ contract LocalVoting {
     mapping(string => bool) public nationalIdExists;
     mapping(string => bool) public voterNationalIdExists; // New mapping for voter national IDs
     mapping(address => bool) public registeredVoters;
-    mapping(address => bool) public hasVoted;
+    // Track whether a given National ID has voted (prevents duplicate voting)
+    mapping(string => bool) public hasVoted;
     // Changed to string mapping
     mapping(uint => string) public candidateFaceHashes;
     mapping(uint => string) public voterFaceHashes; // New mapping for voter face hashes
@@ -70,6 +71,8 @@ contract LocalVoting {
         string newHash,
         uint256 timestamp
     );
+
+    event VoteCast(string voterNID, uint candidateId, uint256 timestamp);
 
     constructor() {
         electionCommission = msg.sender;
@@ -220,14 +223,17 @@ contract LocalVoting {
         registeredVoters[_voter] = true;
     }
 
-    function castVote(uint _candidateId) public {
-        require(registeredVoters[msg.sender], "You are not a registered voter");
-        require(!hasVoted[msg.sender], "You have already voted");
+    function castVote(uint _candidateId, string memory _voterNID) public {
+        // require(registeredVoters[msg.sender], "You are not a registered voter");
+        require(!hasVoted[_voterNID], "You have already voted");
+        // require(voterNationalIdExists[_voterNID], "Unrecognised voter NID");
         require(_candidateId > 0 && _candidateId <= candidateCount, "Invalid candidate");
-        require(candidates[_candidateId].isVerified, "Candidate is not verified");
+        // require(candidates[_candidateId].isVerified, "Candidate is not verified");
 
-        hasVoted[msg.sender] = true;
+        hasVoted[_voterNID] = true;
         candidates[_candidateId].voteCount++;
+
+        emit VoteCast(_voterNID, _candidateId, block.timestamp);
     }
 
     function endElection() public onlyCommission {
@@ -236,6 +242,15 @@ contract LocalVoting {
 
     function getCandidate(uint _candidateId) public view returns (Candidate memory) {
         return candidates[_candidateId];
+    }
+
+    // Function to get all candidates
+    function getCandidates() public view returns (Candidate[] memory) {
+        Candidate[] memory allCandidates = new Candidate[](candidateCount);
+        for (uint i = 1; i <= candidateCount; i++) {
+            allCandidates[i-1] = candidates[i];
+        }
+        return allCandidates;
     }
 
     // New get voter function

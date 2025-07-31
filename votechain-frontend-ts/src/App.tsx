@@ -6,6 +6,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { Layout } from "@/components/Layout/Layout"
 import { AdminDashboard } from "@/components/Admin/AdminDashboard"
 import { VoterDashboard } from "@/components/Voter/VoterDashboard"
+import { VoteCasting } from "@/components/Voter/VoteCasting"
 import { ErrorBoundary } from "@/components/ui/error-boundary"
 import { RegisterCandidate } from "@/components/Admin/RegisterCandidate"
 import { RegisterVoter } from "@/components/Admin/RegisterVoter"
@@ -45,6 +46,7 @@ function AppWithWallet() {
           path="/"
           element={<PublicDashboard />}
         />
+        <Route path="/vote" element={<VoteCasting />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/register-candidate" element={<RegisterCandidate />} />
         <Route path="/admin/register-voter" element={<RegisterVoter />} />

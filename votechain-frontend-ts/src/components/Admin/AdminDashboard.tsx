@@ -60,7 +60,7 @@ export function AdminDashboard() {
     })
 
     try {
-      const response = await fetch('http://localhost:5000/api/voters/verify-face-demo', {
+      const response = await fetch('http://localhost:5000/api/votes/verify-face', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

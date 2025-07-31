@@ -277,8 +277,13 @@ export const contractABI = [
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "candidateId",
+        "name": "_candidateId",
         "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "_voterNID",
+        "type": "string"
       }
     ],
     "name": "castVote",
@@ -379,6 +384,31 @@ export const contractABI = [
       }
     ],
     "name": "VoterRegistered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "voterNID",
+        "type": "string"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "candidateId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "VoteCast",
     "type": "event"
   }
 ];

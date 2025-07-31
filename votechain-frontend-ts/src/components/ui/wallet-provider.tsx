@@ -140,8 +140,25 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           isConnecting: false,
           isWalletChecked: true
         })
-        // Redirect to AdminDashboard after successful connection
+        
+        // Role-based routing: Check if user is admin
+        try {
+          const { createContract } = await import('@/config/contract')
+          const contractInstance = createContract(signer)
+          const commission = await contractInstance.electionCommission()
+          
+          if (accounts[0].toLowerCase() === commission.toLowerCase()) {
+            // User is admin - redirect to admin dashboard
         navigate('/admin', { replace: true })
+          } else {
+            // User is voter - redirect to voter dashboard
+            navigate('/voter', { replace: true })
+          }
+        } catch (contractError) {
+          console.error('Error determining role:', contractError)
+          // If role determination fails, stay on current page
+          // User can manually navigate where they need to go
+        }
       }
     } catch (error) {
       console.error('Error connecting to MetaMask:', error)

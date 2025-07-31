@@ -201,7 +201,7 @@ router.get('/face-hash/:nid', async (req, res) => {
   try {
       const { nid } = req.params;
       console.log(`[Face Hash] Generating face hash for NID: ${nid}`);
-
+      
       // Generate face ID from existing captured images
       const faceId = generateFaceId(nid);
       if (!faceId) {
@@ -224,8 +224,8 @@ router.get('/face-hash/:nid', async (req, res) => {
           message: 'Failed to generate face hash',
           error: error.message
       });
-  }
-});
+          }
+      });
 
 router.post('/train-face/:nid', async (req, res) => {
   try {
@@ -249,13 +249,13 @@ router.post('/train-face/:nid', async (req, res) => {
               success: false,
               message: 'No face images found. Please capture face images first.'
           });
-      }
+              }
 
       console.log(`[Train Face] Found ${imageFiles.length} face images for training`);
 
       // Import spawn dynamically
       const { spawn } = await import('child_process');
-      
+
       // Run train_faces.py script
       const trainScript = path.join(faceRecognitionPath, 'train_faces.py');
       console.log(`[Train Face] Running training script: ${trainScript}`);
@@ -280,7 +280,7 @@ router.post('/train-face/:nid', async (req, res) => {
           errorOutput += error;
       });
 
-      trainProcess.on('close', (code) => {
+          trainProcess.on('close', (code) => {
           console.log(`[Train Face] Training process finished with code: ${code}`);
           
           if (code !== 0) {
@@ -290,7 +290,7 @@ router.post('/train-face/:nid', async (req, res) => {
                   error: errorOutput,
                   code: code
               });
-          }
+              }
 
           res.json({
               success: true,

@@ -400,15 +400,15 @@ export function RegisterCandidate() {
                         {biometricStatus.isTraining ? "Training..." : "Train Face"}
                       </Button>
                       {biometricStatus.isTraining && (
-                        <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground">
                           Training face model...
                         </div>
                       )}
                       {biometricStatus.faceTrainingProgress === 100 && (
                         <div className="text-sm text-green-600">
                           Face training completed successfully
-                        </div>
-                      )}
+                    </div>
+                  )}
                     </div>
                   )}
                   {biometricStatus.faceCaptured && !biometricStatus.isTraining && biometricStatus.faceTrainingProgress !== 100 && (

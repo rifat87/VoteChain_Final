@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { useContract, Candidate } from "@/hooks/useContract";
 import { useEffect, useState } from "react";
+import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
 
 export default function ElectionStatus() {
   const { toast } = useToast();
@@ -21,12 +22,12 @@ export default function ElectionStatus() {
       setLoading(true);
       setError(null);
       try {
-        console.log('Starting to fetch candidates...');
+        console.log('Starting to fetch candidates for ElectionStatus...');
         console.log('Contract loading state:', contractLoading);
         console.log('Contract error state:', contractError);
         const data = await getCandidates();
         if (!mounted) return;
-        console.log('Raw candidate data received:', data);
+        console.log('Raw candidate data received in ElectionStatus:', data);
         setCandidates(data);
       } catch (err) {
         if (!mounted) return;
@@ -55,6 +56,21 @@ export default function ElectionStatus() {
     });
   };
 
+  const handleRetry = () => {
+    if (isInitialized) {
+      setError(null);
+      setLoading(true);
+      // Trigger useEffect by updating a dependency
+      getCandidates().then(data => {
+        setCandidates(data);
+        setLoading(false);
+      }).catch(err => {
+        setError("Failed to fetch candidates");
+        setLoading(false);
+      });
+    }
+  };
+
   // Demo election info (replace with real data if available)
   const demoElection = {
     name: "2025 National Election",
@@ -65,10 +81,43 @@ export default function ElectionStatus() {
   };
 
   if (loading || contractLoading) {
-    return <div className="text-center py-8">Loading candidates...</div>;
+    return (
+      <div className="max-w-xl mx-auto py-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Election Status</CardTitle>
+          </CardHeader>
+          <CardContent className="flex items-center justify-center py-12">
+            <div className="text-center space-y-4">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+              <p className="text-muted-foreground">Loading election data...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
+  
   if (error || contractError) {
-    return <div className="text-center text-red-500 py-8">{error || contractError?.message}</div>;
+    return (
+      <div className="max-w-xl mx-auto py-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Election Status</CardTitle>
+          </CardHeader>
+          <CardContent className="flex items-center justify-center py-12">
+            <div className="text-center space-y-4">
+              <AlertCircle className="h-8 w-8 mx-auto text-destructive" />
+              <p className="text-destructive">{error || contractError?.message}</p>
+              <Button onClick={handleRetry} variant="outline">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Try Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -114,9 +163,9 @@ export default function ElectionStatus() {
                       <div className="text-xs text-muted-foreground">Location: {candidate.location}</div>
                     </div>
                     <div className="flex flex-col sm:items-end gap-1 min-w-[140px]">
-                      <span className="text-sm font-semibold">Votes: {candidate.voteCount}</span>
-                      <Badge variant={candidate.isVerified ? "default" : "secondary"}>
-                        {candidate.isVerified ? "Verified" : "Pending Verification"}
+                      <span className="text-sm font-semibold">Votes: {candidate.voteCount || 0}</span>
+                      <Badge variant="default">
+                        Registered
                       </Badge>
                     </div>
                   </div>

@@ -363,15 +363,15 @@ export function RegisterVoter() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Face Capture</Label>
-                  <FaceCapture
-                    nid={formData.nationalId}
-                    onCaptureComplete={(success) => {
-                      setBiometricStatus(prev => ({ ...prev, faceCaptured: success }))
-                      if (success) {
-                        console.log('Face capture successful, hash stored on server')
-                      }
-                    }}
-                  />
+                <FaceCapture
+                  nid={formData.nationalId}
+                  onCaptureComplete={(success) => {
+                    setBiometricStatus(prev => ({ ...prev, faceCaptured: success }))
+                    if (success) {
+                      console.log('Face capture successful, hash stored on server')
+                    }
+                  }}
+                />
                   {biometricStatus.faceCaptured && (
                     <div className="space-y-2">
                       <Button

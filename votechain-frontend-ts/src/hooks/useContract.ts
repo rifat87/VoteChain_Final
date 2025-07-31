@@ -67,23 +67,61 @@ export function useContract() {
 
     try {
       console.log('Using initialized contract for getCandidates');
-      const count = await contract.candidateCount();
-      console.log('Total candidates:', count);
+      console.log('Contract instance:', contract);
+      console.log('Contract address:', contract.address);
       
-      const candidates: Candidate[] = [];
-      for (let i = 0; i < count; i++) {
-        const candidate = await contract.getCandidate(i);
-        candidates.push({
+      // Check if contract has candidateCount function
+      const count = await contract.candidateCount();
+      console.log('Total candidates from contract:', Number(count));
+      
+      if (Number(count) === 0) {
+        console.log('No candidates registered in contract');
+        return [];
+      }
+
+      // Method 1: Try using getCandidates function (if it exists)
+      try {
+        console.log('Trying to call getCandidates() function...');
+        const allCandidates = await contract.getCandidates();
+        console.log('Raw candidates from getCandidates():', allCandidates);
+        
+        const candidates: Candidate[] = allCandidates.map((candidate: any, index: number) => ({
           id: Number(candidate.id),
           name: candidate.name,
           nationalId: candidate.nationalId,
           location: candidate.location,
           voteCount: Number(candidate.voteCount),
           isVerified: candidate.isVerified
-        });
+        }));
+        
+        console.log('Processed candidates array:', candidates);
+        return candidates;
+      } catch (getCandidatesError) {
+        console.log('getCandidates() function failed, trying individual getCandidate calls:', getCandidatesError);
+        
+        // Method 2: Fallback to individual getCandidate calls
+        const candidates: Candidate[] = [];
+        for (let i = 1; i <= Number(count); i++) { // Note: starting from 1, not 0
+          try {
+            console.log(`Fetching candidate ${i}...`);
+            const candidate = await contract.getCandidate(i);
+            console.log(`Candidate ${i} data:`, candidate);
+            
+            candidates.push({
+              id: Number(candidate.id),
+              name: candidate.name,
+              nationalId: candidate.nationalId,
+              location: candidate.location,
+              voteCount: Number(candidate.voteCount),
+              isVerified: candidate.isVerified
+            });
+          } catch (individualError) {
+            console.error(`Error fetching candidate ${i}:`, individualError);
+          }
+        }
+        console.log('Final candidates array from individual calls:', candidates);
+        return candidates;
       }
-      console.log('Final candidates array:', candidates);
-      return candidates;
     } catch (error) {
       console.error('Error fetching candidates:', error);
       throw error;
@@ -126,10 +164,15 @@ export function useContract() {
     }
   }
 
-  const castVote = async (candidateId: number) => {
+  const castVote = async (candidateId: number, voterNID: string) => {
     if (!contract) throw new Error('Contract not initialized')
-    const tx = await contract.castVote(candidateId)
-    await tx.wait()
+    try {
+      const tx = await contract.castVote(candidateId, voterNID)
+      await tx.wait()
+    } catch (error) {
+      console.error('Error casting vote:', error)
+      throw error
+    }
   }
 
   const registerCandidate = async (name: string, nationalId: string, location: string, faceHash: string) => {
