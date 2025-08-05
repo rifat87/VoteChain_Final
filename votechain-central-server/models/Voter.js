@@ -52,6 +52,11 @@ const voterSchema = new mongoose.Schema({
     trim: true,
     minlength: [32, 'Face ID must be at least 32 characters long']
   },
+  fingerprintHash: {
+    type: String,
+    trim: true,
+    default: null
+  },
   walletAddress: {
     type: String,
     unique: true,

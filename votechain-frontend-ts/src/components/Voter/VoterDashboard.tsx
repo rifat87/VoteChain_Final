@@ -1,41 +1,116 @@
+// import { useContract } from "@/hooks/useContract"
+// import { useWallet } from "@/components/ui/wallet-provider"
+// import { CandidateList } from "@/components/Dashboard/CandidateList"
+// import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+
+// // Demo candidate data
+// const demoCandidates = [
+//   {
+//     id: 1,
+//     name: "Alice Johnson",
+//     nationalId: "1234567890",
+//     location: "New York",
+//     voteCount: 42,
+//     isVerified: true,
+//   },
+//   {
+//     id: 2,
+//     name: "Bob Smith",
+//     nationalId: "9876543210",
+//     location: "California",
+//     voteCount: 37,
+//     isVerified: false,
+//   },
+// ]
+
+// export function VoterDashboard() {
+//   const { isWalletChecked, isConnected } = useWallet()
+//   const { isInitialized } = useContract()
+
+//   if (!isWalletChecked || !isConnected || !isInitialized) {
+//     return <div className="flex h-screen items-center justify-center"><span className="text-muted-foreground">Loading...</span></div>
+//   }
+
+//   // Only show dashboard if wallet and contract are ready
+//   return (
+//     <div className="container mx-auto p-4">
+//       <Card>
+//         <CardHeader>
+//           <CardTitle>Voter Dashboard</CardTitle>
+//         </CardHeader>
+//         <CardContent>
+//           <CandidateList candidates={demoCandidates} isLoading={false} />
+//         </CardContent>
+//       </Card>
+//     </div>
+//   )
+// } 
+
 import { useEffect, useState } from "react"
-import { useContract } from "@/hooks/useContract"
+import { Candidate } from "@/hooks/useContract"
 import { useWallet } from "@/components/ui/wallet-provider"
 import { CandidateList } from "@/components/Dashboard/CandidateList"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Loader2, AlertCircle, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useNavigate } from "react-router-dom"
-import type { Candidate } from "@/hooks/useContract"
-
-// Demo candidate data
-const demoCandidates = [
-  {
-    id: 1,
-    name: "Alice Johnson",
-    nationalId: "1234567890",
-    location: "New York",
-    voteCount: 42,
-    isVerified: true,
-  },
-  {
-    id: 2,
-    name: "Bob Smith",
-    nationalId: "9876543210",
-    location: "California",
-    voteCount: 37,
-    isVerified: false,
-  },
-]
 
 export function VoterDashboard() {
   const { isWalletChecked, isConnected } = useWallet()
-  const { isInitialized } = useContract()
 
-  if (!isWalletChecked || !isConnected || !isInitialized) {
-    return <div className="flex h-screen items-center justify-center"><span className="text-muted-foreground">Loading...</span></div>
+  const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchCandidates = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch("http://localhost:5000/api/elections/public/election-data")
+      const data = await res.json()
+      setCandidates(data.candidates)
+    } catch (err) {
+      console.error("Failed to fetch candidates in VoterDashboard:", err)
+      setError("Could not fetch candidate data")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  // Only show dashboard if wallet and contract are ready
+  useEffect(() => {
+    if (isWalletChecked && isConnected) {
+      fetchCandidates()
+    }
+  }, [isWalletChecked, isConnected])
+
+  if (!isWalletChecked || !isConnected) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <span className="text-muted-foreground">Checking wallet...</span>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-muted-foreground">Loading candidates...</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen">
+        <AlertCircle className="h-8 w-8 text-destructive" />
+        <p className="text-destructive mt-2">{error}</p>
+        <Button variant="outline" onClick={fetchCandidates} className="mt-4">
+          <RefreshCw className="h-4 w-4 mr-2" /> Try Again
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <div className="container mx-auto p-4">
       <Card>
@@ -43,9 +118,9 @@ export function VoterDashboard() {
           <CardTitle>Voter Dashboard</CardTitle>
         </CardHeader>
         <CardContent>
-          <CandidateList candidates={demoCandidates} isLoading={false} />
+          <CandidateList candidates={candidates} isLoading={false} />
         </CardContent>
       </Card>
     </div>
   )
-} 
+}

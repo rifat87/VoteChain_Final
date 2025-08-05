@@ -8,13 +8,11 @@ import {
   deleteVoterValidation
 } from '../middleware/validators/voterValidator.js';
 import validate from '../middleware/validate.js';
-import { v4 as uuidv4 } from 'uuid';
 import { createHash } from 'crypto';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { body, param } from 'express-validator';
-import Voter from '../models/Voter.js';
+
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -103,6 +101,9 @@ router.post('/train-face/:nid', voterController.handleTrainFace);
 
 // DEMO: Face verification - will be deleted later
 router.post('/verify-face-demo', voterController.handleVerifyFaceDemo);
+
+router.get('/by-fingerprint/:fingerId', voterController.getVoterByFingerprint);
+
 
 // Update voter
 router.put(

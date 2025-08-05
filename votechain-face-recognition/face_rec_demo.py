@@ -18,7 +18,7 @@ from contextlib import contextmanager
 # Configuration
 TIMEOUT_SECONDS = 10  # Auto-exit after 10 seconds
 MAX_FRAMES = 30       # Maximum frames to process
-CONFIDENCE_THRESHOLD = 0.6  # Face match confidence
+CONFIDENCE_THRESHOLD = 0.75  # Face match confidence
 
 @contextmanager
 def camera_context():

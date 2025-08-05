@@ -438,4 +438,4 @@ export function RegisterCandidate() {
       </Card>
     </div>
   )
-}
+} 

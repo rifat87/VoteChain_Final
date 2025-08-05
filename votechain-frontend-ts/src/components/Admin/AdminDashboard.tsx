@@ -36,6 +36,8 @@ export function AdminDashboard() {
   const [error] = useState<string | null>(null)
   // DEMO: Face verification state - will be deleted later
   const [isVerifying, setIsVerifying] = useState(false)
+  const [isFormatting, setIsFormatting] = useState(false)
+
 
   const handleEndElection = async () => {
     // Demo: just navigate, no contract call
@@ -93,6 +95,43 @@ export function AdminDashboard() {
     }
   }
 
+  const handleFormatFingerprint = async () => {
+    setIsFormatting(true)
+  
+    toast({
+      title: "Formatting Fingerprint Database",
+      description: "Sending request to reset fingerprint sensor...",
+    })
+  
+    try {
+      const response = await fetch("http://localhost:5000/api/biometric/fingerprint/format", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+  
+      const data = await response.json()
+  
+      if (response.ok && data.success) {
+        toast({
+          title: "✅ Database Cleared",
+          description: "All fingerprint records have been deleted.",
+        })
+      } else {
+        throw new Error(data.message || "Unknown error while formatting")
+      }
+    } catch (error) {
+      console.error("Format error:", error)
+      toast({
+        title: "❌ Format Failed",
+        description: error instanceof Error ? error.message : "Failed to communicate with sensor",
+        variant: "destructive",
+      })
+    } finally {
+      setIsFormatting(false)
+    }
+  }
+  
+
   if (isLoading) return <div>Loading...</div>
   if (error) return <div>Error: {error}</div>
 
@@ -112,6 +151,20 @@ export function AdminDashboard() {
                 </Button>
                 <Button onClick={handleRegisterCandidate} variant="default">
                   Register Candidate
+                </Button>
+                <Button 
+                  onClick={handleFormatFingerprint} 
+                  variant="destructive" 
+                  disabled={isFormatting}
+                >
+                  {isFormatting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Formatting...
+                    </>
+                  ) : (
+                    "Format Fingerprints"
+                  )}
                 </Button>
               </div>
             </div>

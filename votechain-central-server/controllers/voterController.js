@@ -281,11 +281,12 @@ const handleTrainFace = async (req, res) => {
 };
 
 // Create a new voter
+// Create a new voter
 const createVoter = async (req, res) => {
   try {
-    const errors = validationResult(req);
+    const errors = validationResult(req)
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({ errors: errors.array() })
     }
 
     const {
@@ -299,19 +300,20 @@ const createVoter = async (req, res) => {
       postCode,
       location,
       faceId,
+      fingerprintHash,  // ✅ Extracted
       walletAddress,
       blockchainId
-    } = req.body;
+    } = req.body
 
     // Check if voter already exists
-    const existingVoter = await Voter.findOne({ 
+    const existingVoter = await Voter.findOne({
       $or: [
         { nationalId },
         { blockchainId }
       ]
-    });
+    })
     if (existingVoter) {
-      return res.status(400).json({ message: 'Voter already exists' });
+      return res.status(400).json({ message: 'Voter already exists' })
     }
 
     // Create voter
@@ -326,24 +328,25 @@ const createVoter = async (req, res) => {
       postCode,
       location,
       faceId,
+      fingerprintHash,  // ✅ Included here
       walletAddress,
       blockchainId,
       isRegistered: true,
       isVerified: true,
       verificationStatus: 'approved'
-    });
+    })
 
-    await voter.save();
+    await voter.save()
 
     res.status(201).json({
       message: 'Voter created successfully',
       voter
-    });
+    })
   } catch (error) {
-    console.error('Error creating voter:', error);
-    res.status(500).json({ message: 'Error creating voter', error: error.message });
+    console.error('Error creating voter:', error)
+    res.status(500).json({ message: 'Error creating voter', error: error.message })
   }
-};
+}
 
 // Get all voters
 const getAllVoters = async (req, res) => {
@@ -403,11 +406,12 @@ const updateVoter = async (req, res) => {
       postCode,
       location,
       faceId,
+      fingerprintHash, // ✅ Added here
       walletAddress,
       blockchainId
     } = req.body;
 
-    // Update voter
+    // Update voter fields
     voter.nationalId = nationalId || voter.nationalId;
     voter.name = name || voter.name;
     voter.fathersName = fathersName || voter.fathersName;
@@ -418,6 +422,7 @@ const updateVoter = async (req, res) => {
     voter.postCode = postCode || voter.postCode;
     voter.location = location || voter.location;
     voter.faceId = faceId || voter.faceId;
+    voter.fingerprintHash = fingerprintHash || voter.fingerprintHash; // ✅ Added here
     voter.walletAddress = walletAddress || voter.walletAddress;
     voter.blockchainId = blockchainId || voter.blockchainId;
 
@@ -432,6 +437,7 @@ const updateVoter = async (req, res) => {
     res.status(500).json({ message: 'Error updating voter', error: error.message });
   }
 };
+
 
 // Delete voter
 const deleteVoter = async (req, res) => {
@@ -451,6 +457,17 @@ const deleteVoter = async (req, res) => {
   }
 };
 
+// GET /api/voter/by-fingerprint/:fingerId
+const getVoterByFingerprint = async (req, res) => {
+  const { fingerId } = req.params;
+  const voter = await Voter.findOne({ fingerprintHash: fingerId.toString() });
+  if (!voter) {
+    return res.status(404).json({ message: 'No voter found for this fingerprint ID' });
+  }
+  res.json({ voter });
+};
+
+
 export default {
   createVoter,
   getAllVoters,
@@ -460,5 +477,6 @@ export default {
   deleteVoter,
   getFaceHash,
   handleTrainFace,
-  handleVerifyFaceDemo // DEMO: will be deleted later
+  handleVerifyFaceDemo, // DEMO: will be deleted later
+  getVoterByFingerprint
 }; 

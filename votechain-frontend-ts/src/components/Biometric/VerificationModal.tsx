@@ -39,7 +39,7 @@ export function VerificationModal({ open, onClose, onVerified }: VerificationMod
       onVerified(data.voter?.nationalId || "");
       onClose();
     } catch (err) {
-      console.error("Verification error:", err);
+      console.error("Face verification error:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setIsVerifying(false);
@@ -50,19 +50,34 @@ export function VerificationModal({ open, onClose, onVerified }: VerificationMod
     setError(null);
     setIsVerifying(true);
     try {
-      const res = await fetch("http://localhost:5000/api/votes/verify-fingerprint", {
+      const detectRes = await fetch("http://localhost:5000/api/biometric/fingerprint/detect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || "Fingerprint verification failed");
+
+      const detectData = await detectRes.json();
+      if (!detectRes.ok || !detectData.success || !detectData.fingerId) {
+        throw new Error(detectData.message || "Fingerprint detection failed");
       }
-      toast({ title: "✅ Fingerprint Verified", description: `NID: ${data.voter?.nationalId || "unknown"}` });
-      onVerified(data.voter?.nationalId || "");
+
+      const fingerId = detectData.fingerId;
+      console.log("[UI] Detected fingerprint ID:", fingerId);
+
+      const voterRes = await fetch(`http://localhost:5000/api/voters/by-fingerprint/${fingerId}`);
+      const voterData = await voterRes.json();
+      if (!voterRes.ok || !voterData.voter?.nationalId) {
+        throw new Error("No matching voter found for fingerprint ID: " + fingerId);
+      }
+
+      toast({
+        title: "✅ Fingerprint Verified",
+        description: `NID: ${voterData.voter.nationalId}`,
+      });
+
+      onVerified(voterData.voter.nationalId);
       onClose();
     } catch (err) {
-      console.error("Verification error:", err);
+      console.error("Fingerprint verification error:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setIsVerifying(false);
@@ -121,4 +136,4 @@ export function VerificationModal({ open, onClose, onVerified }: VerificationMod
       </DialogContent>
     </Dialog>
   );
-} 
+}

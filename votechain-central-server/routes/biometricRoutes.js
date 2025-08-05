@@ -2,6 +2,7 @@ import express from 'express';
 import { spawn } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fingerPrintController from '../controllers/fingerPrintController.js';
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
@@ -95,4 +96,7 @@ router.post('/capture-face', async (req, res) => {
     }
 });
 
+router.post('/fingerprint/enroll', fingerPrintController.captureFingerprint);
+router.post('/fingerprint/detect', fingerPrintController.detectFingerprint);
+router.post("/fingerprint/format", fingerPrintController.formatFingerprintDatabase);
 export default router; 
