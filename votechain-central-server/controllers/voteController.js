@@ -44,7 +44,7 @@ export const verifyFace = async (req, res) => {
 
         const pythonProcess = spawn('python', [faceRecPath], {
             cwd: faceRecDir,
-            timeout: 15000,
+            // timeout: 15000,
         });
 
         let stdout = '';

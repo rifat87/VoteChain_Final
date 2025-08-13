@@ -100,7 +100,7 @@ router.get('/face-hash/:nid', voterController.getFaceHash);
 router.post('/train-face/:nid', voterController.handleTrainFace);
 
 // DEMO: Face verification - will be deleted later
-router.post('/verify-face-demo', voterController.handleVerifyFaceDemo);
+// router.post('/verify-face-demo', voterController.handleVerifyFaceDemo);
 
 router.get('/by-fingerprint/:fingerId', voterController.getVoterByFingerprint);
 

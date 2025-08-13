@@ -99,7 +99,7 @@ const handleVerifyFaceDemo = async (req, res) => {
         console.log('[DEMO] Running face recognition demo script...');
         const pythonProcess = spawn('python', [faceRecPath], {
             cwd: path.join(process.cwd(), '..', 'votechain-face-recognition'),
-            timeout: 15000 // 15 second timeout as backup
+            // timeout: 150000 // 15 second timeout as backup
         });
 
         let output = '';
@@ -158,6 +158,9 @@ const handleVerifyFaceDemo = async (req, res) => {
                     message: 'Face verification failed. No matching face found.',
                     details: output.trim()
                 });
+            } else if (code === null) {
+              console.error('Face recognition exited unexpectedly (null code)');
+              return res.status(500).json({ success: false, message: 'Recognition crashed or timed out' });
             } else {
                 // Other error codes
                 res.status(500).json({

@@ -26,6 +26,7 @@ export function FingerprintCapture({ onCapture, onRetake, isCaptured }: Fingerpr
       })
 
       const data = await response.json()
+      console.log("👋 Got response from fingerprint enroll:", data)
 
       if (!response.ok || !data.success) {
         throw new Error(data.message || "Fingerprint enrollment failed")
