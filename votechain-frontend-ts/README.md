@@ -52,3 +52,39 @@ export default tseslint.config({
   },
 })
 ```
+
+
+
+
+# Final design
+```javascript
+    FRONTEND
+    │
+    ├── RegisterCandidate.tsx  → POST /api/candidates/register → candidateRoutes.js → Candidate.js (MongoDB)
+    │                             (Also later: push to blockchain)
+    │
+    ├── RegisterVoter.tsx      → POST /api/voter              → voterController.js → Voter.js (MongoDB)
+    │                             (Also later: push to blockchain)
+    │
+    ├── VotePage.tsx or VoterDashboard.tsx → POST /api/vote/cast → voteController.js → (castVote → blockchain.vote(NID))
+    │
+    ├── ElectionStatus.tsx / PublicDashboard.tsx → GET /public/election-data → electionController.js → blockchain.getCandidates()
+    │
+    BACKEND
+    │
+    ├── models/
+    │   ├── Candidate.js   → Candidate schema (MongoDB)
+    │   └── Voter.js       → Voter schema (MongoDB)
+    │
+    ├── routes/
+    │   └── candidateRoutes.js → register candidate, fetch candidates
+    │
+    ├── controllers/
+    │   ├── voterController.js     → register voter, CRUD voters
+    │   ├── voteController.js      → verifyFace, verifyFingerprint, castVote (to blockchain)
+    │   └── electionController.js  → read election data (from blockchain)
+    │
+    └── utils/
+        └── contract.js → connects to blockchain contract
+
+```

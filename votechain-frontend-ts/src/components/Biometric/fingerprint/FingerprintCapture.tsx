@@ -4,25 +4,30 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface FingerprintCaptureProps {
-  onCapture: (data: string) => void
+  nid: string
+  onCapture: (nid: string) => void
   onRetake: () => void
   isCaptured: boolean
 }
 
-export function FingerprintCapture({ onCapture, onRetake, isCaptured }: FingerprintCaptureProps) {
+export function FingerprintCapture({ nid, onCapture, onRetake, isCaptured }: FingerprintCaptureProps) {
   const [isEnrolling, setIsEnrolling] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const handleFingerprintCapture = async () => {
+    if (!nid) {
+      setError("NID is required before capturing fingerprint")
+      return
+    }
+
     setIsEnrolling(true)
     setError(null)
 
     try {
       const response = await fetch("http://localhost:5000/api/biometric/fingerprint/enroll", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        }
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nid })
       })
 
       const data = await response.json()
@@ -32,8 +37,7 @@ export function FingerprintCapture({ onCapture, onRetake, isCaptured }: Fingerpr
         throw new Error(data.message || "Fingerprint enrollment failed")
       }
 
-      // Send the finger ID (or hash) to the parent
-      onCapture(data.fingerId.toString())
+      onCapture(data.nid)
     } catch (err) {
       console.error("Fingerprint error:", err)
       setError(err instanceof Error ? err.message : "Fingerprint capture failed")
@@ -65,7 +69,7 @@ export function FingerprintCapture({ onCapture, onRetake, isCaptured }: Fingerpr
           </div>
 
           {!isCaptured && (
-            <Button onClick={handleFingerprintCapture} className="w-full" disabled={isEnrolling}>
+            <Button onClick={handleFingerprintCapture} className="w-full" disabled={isEnrolling || !nid.trim()}>
               {isEnrolling ? "Capturing..." : "Capture Fingerprint"}
             </Button>
           )}

@@ -15,3 +15,12 @@ docs/
 node_modules
 node_modules
 node_modules
+
+# Ignore all zip files
+*.zip
+
+# Ignore everything in the 'myenv' folder
+myenv/
+
+# Ignore DLLs anywhere
+*.dll

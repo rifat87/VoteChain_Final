@@ -37,7 +37,7 @@ export function CandidateList({ candidates, onVote, isLoading }: CandidateListPr
               <CardDescription>
                 Location: {candidate.location}
                 {!candidate.isVerified && (
-                  <span className="ml-2 text-yellow-500">(Pending Verification)</span>
+                  <span className="ml-2 text-green-500">(Verified)</span>
                 )}
               </CardDescription>
             </CardHeader>

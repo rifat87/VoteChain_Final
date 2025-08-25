@@ -268,3 +268,226 @@ Here is a flowchart:
 
 ```
 
+
+
+
+# Data of App.tsx:
+
+![App.tsx](images/apptsx.png)
+
+
+# Data Flow from PublicDashboard
+
+```javascript
+[User visits /] 
+     ↓
+React renders PublicDashboard
+     ↓
+useEffect triggers fetchPublicElectionData()
+     ↓
+GET http://localhost:5000/api/elections/public/election-data
+     ↓
+Backend (Express.js)
+   → Reads candidate data from MongoDB
+   → Optionally fetches live vote counts from Blockchain
+   → Returns JSON { candidates[], ended, count }
+     ↓
+Frontend updates state & renders
+
+```
+
+```javascript
+Frontend (PublicDashboard.tsx)
+  ↓
+GET /api/elections/public/election-data
+  ↓
+Express Route: router.get('/public/election-data', electionController.getElectionData)
+  ↓
+electionController.getElectionData()
+  ↓
+Blockchain (via getContract()):
+    - electionEnded()
+    - candidateCount()
+    - getCandidates()
+  ↓
+Contract returns data → processed in JS → sent as JSON
+  ↓
+Frontend state updates & renders
+```
+
+# The data flow for role-checking
+
+```javascript
+WalletProvider (frontend)
+  ↓
+Reads connected wallet address from MetaMask
+  ↓
+Calls blockchain contract function (e.g., getRole(address))
+  ↓
+Sets global state: role = 'admin' | 'voter'
+  ↓
+Dashboards use role to decide UI and routes
+
+```
+
+
+# Data flow at login
+
+```javascript
+[User clicks Connect Wallet]
+       ↓
+MetaMask pops up
+       ↓
+frontend/wallet-provider.tsx:
+  - eth_requestAccounts → signer
+  - createContract(signer)
+  - electionCommission() → admin address
+  - Compare with connected wallet
+       ↓
+If match → /admin
+Else     → /voter
+
+```
+
+
+
+# Cadidate Registration Flow
+
+```javascript
+Admin (RegisterCandidate.tsx)
+    │
+    ├─ FaceCapture → POST /api/candidates/train-face/:nid → MongoDB (face embeddings)
+    │
+    ├─ GET /api/candidates/face-hash/:nid → Face hash (from MongoDB)
+    │
+    ├─ Blockchain: registerCandidate(name, NID, location, faceHash)
+    │
+    └─ POST /api/candidates/register → MongoDB (full profile + blockchainId)
+
+
+  const tx = await registerCandidate(
+  formData.name,         // Candidate full name
+  formData.nationalId,   // NID (10-digit string)
+  formData.location,     // Constituency or area
+  faceHash               // SHA-256 hash of face images
+)
+
+
+```
+
+
+```javascript
+Admin (Frontend: RegisterCandidate.tsx)
+    |
+    |---[1] FaceCapture component--->
+    |    POST /api/candidates/train-face/:nid
+    |    -------------------------------------
+    |    Backend:
+    |       - Stores captured face images
+    |       - Runs ML training
+    |       - Saves embeddings in MongoDB
+    |    -------------------------------------
+    |<--- 200 OK (Face trained)
+    |
+    |---[2] GET /api/candidates/face-hash/:nid--->
+    |    ----------------------------------------
+    |    Backend:
+    |       - Reads stored face images
+    |       - Generates SHA-256 faceHash
+    |    ----------------------------------------
+    |<--- faceHash (string)
+    |
+    |---[3] registerCandidate(name, NID, location, faceHash) --->
+    |    -------------------------------------------------------
+    |    Blockchain (Smart Contract):
+    |       - Stores candidate { id, name, NID, location, faceHash, voteCount=0, isVerified=false }
+    |       - Emits CandidateRegistered event
+    |    -------------------------------------------------------
+    |<--- Transaction receipt (tx.hash)
+    |
+    |---[4] POST /api/candidates/register--->
+    |    Body:
+    |       - name, party, NID, fathersName, mothersName, DOB,
+    |         bloodGroup, postOffice, postCode, location,
+    |         faceId (regenerated in backend),
+    |         fingerprint (SHA256 placeholder),
+    |         blockchainId = tx.hash
+    |    ------------------------------------
+    |    Backend:
+    |       - Saves full candidate profile in MongoDB
+    |       - Adds timestamps, verification status
+    |    ------------------------------------
+    |<--- 201 Created (Candidate saved)
+    |
+[Frontend navigates back to /admin dashboard]
+
+```
+
+
+# End to End flow: Face Registration(Voter/ Candidate)
+
+```javascript
+sequenceDiagram
+    autonumber
+    participant FE as Frontend (FaceCapture.tsx)
+    participant BR as Backend Routes (biometricRoutes.js)
+    participant PY as Python Script (dataset.py)
+    participant FS as File System (/dataset/<NID>)
+    participant HF as Backend Face Hash API (/face-hash/:nid)
+    participant TF as Train Face API (/train-face/:nid)
+    participant PYTF as Python Script (train_faces.py)
+    participant BC as Blockchain (Smart Contract)
+    participant DB as MongoDB (Central DB)
+
+    Note over FE: User clicks "Start Capture"
+
+    FE->>BR: POST /api/biometric/capture-face {nid}
+    BR->>PY: spawn("python dataset.py <nid>")
+    PY->>PY: Open webcam, load InsightFace model
+    PY->>PY: Loop until 10 images captured<br/>Check face bbox + diff_thresh
+    PY->>FS: Save annotated face images<br/>(<nid>_1.jpg ... <nid>_10.jpg)
+    PY->>BR: stdout logs ("Saved 1/10...", etc.)
+    PY-->>BR: Exit code 0 (success)
+
+    BR-->>FE: { success:true, output:"Saved 1/10..." }
+
+    FE->>HF: GET /api/{voters|candidates}/face-hash/:nid
+    HF->>FS: Read all images for <nid>
+    HF->>HF: Compute SHA256 hash of concatenated image bytes
+    HF-->>FE: { faceHash: "<64-char-hex>" }
+
+    FE->>TF: POST /api/{voters|candidates}/train-face/:nid
+    TF->>PYTF: spawn("python train_faces.py")
+    PYTF->>FS: Load images for all IDs in dataset/
+    PYTF->>PYTF: Extract embeddings with InsightFace
+    PYTF->>PYTF: Update or retrain SGDClassifier
+    PYTF->>FS: Save model (face_encodings.pkl)
+    PYTF-->>TF: Training done
+    TF-->>FE: { success:true }
+
+    Note over FE: After biometric ready, Admin clicks "Register Voter/Candidate"
+
+    FE->>BC: registerVoter(name, nid, location, faceHash)
+    BC-->>FE: blockchainId
+
+    FE->>DB: POST /api/{voters|candidates}/register
+    DB->>DB: Store all personal info + faceId (hash) + blockchainId
+    DB-->>FE: { success:true }
+
+    Note over FE: Registration complete on both blockchain & DB
+
+```
+
+
+nationalId: {
+    type: String,
+    required: [true, 'National ID is required'],
+    unique: true,
+    trim: true,
+    validate: {
+      validator: function(v) {
+        return /^\d{10}$/.test(v);
+      },
+      message: props => `${props.value} is not a valid national ID! Must be 10 digits.`
+    }
+  },

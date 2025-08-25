@@ -16,7 +16,7 @@ SENSOR_ADDRESS = 0xFFFFFFFF
 
 # Enrollment plan
 FINGERS = ["thumb", "index"]     # order shown to operator
-SAMPLES_PER_FINGER = 5
+SAMPLES_PER_FINGER = 2
 
 QUIET_MS = 800
 

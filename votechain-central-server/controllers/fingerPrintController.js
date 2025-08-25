@@ -1,17 +1,19 @@
+
+// ... updated code:
 import { SerialPort } from 'serialport'
 import { ReadlineParser } from '@serialport/parser-readline'
 
-let serial
-let parser
 
+let parser
+let serial
 function initSerial() {
   if (!serial) {
     console.log("[Serial] Initializing serial connection on COM9...")
-    serial = new SerialPort({ path: 'COM9', baudRate: 57600 })
+    serial = new SerialPort({ path: 'COM9', baudRate: 115200 })
     parser = serial.pipe(new ReadlineParser({ delimiter: '\n' }))
 
     serial.on('open', () => {
-      console.log("[Serial] Serial port COM 9 opened successfully.")
+      console.log("[Serial] Serial port COM9 opened successfully.")
     })
 
     serial.on('error', (err) => {
@@ -20,136 +22,114 @@ function initSerial() {
   }
 }
 
-function sendSerialCommand(command, matchCondition = null) {
+function sendSerialJSON(obj) {
   return new Promise((resolve, reject) => {
     initSerial()
 
-    console.log(`[Serial] Sending command: ${command}`)
+    const jsonStr = JSON.stringify(obj)
+    console.log(`[Serial] Sending JSON command: ${jsonStr}`)
 
     const onData = (data) => {
       const clean = data.trim()
       console.log(`[Serial] Received data: ${clean}`)
-
-      let isMatch = false
-
       try {
-        const json = JSON.parse(clean)
-        const status = json.status?.toLowerCase()
-
-        isMatch =
-          (matchCondition && matchCondition(clean)) ||
-          status === 'success' ||
-          status === 'error'
-      } catch (e) {
-        console.warn("[Serial] Ignored non-JSON or malformed data")
-      }
-
-      if (isMatch) {
+        const parsed = JSON.parse(clean)
+        // Assume ESP32 always responds once per command
         parser.removeListener('data', onData)
-        console.log(`[Serial] Final response: ${clean}`)
-        resolve(clean)
+        resolve(parsed)
+      } catch {
+        console.warn("[Serial] Ignored non-JSON data")
       }
     }
 
     parser.on('data', onData)
 
-    serial.write(`${command}\n`, (err) => {
+    serial.write(jsonStr + "\n", (err) => {
       if (err) {
         parser.removeListener('data', onData)
         console.error("[Serial] Failed to write to serial port:", err.message)
         reject(err)
       } else {
-        console.log(`[Serial] Command '${command}' sent successfully.`)
+        console.log("[Serial] Command sent successfully.")
       }
     })
   })
 }
 
+// ================== API Controllers ==================
 
+// ENROLL
 const captureFingerprint = async (req, res) => {
   console.log("[API] /api/fingerprint/enroll called")
+  const { nid } = req.body
+  if (!nid) {
+    return res.status(400).json({ success: false, message: "NID is required" })
+  }
+
   try {
-    const result = await sendSerialCommand("ENROLL")
-    console.log("[API] ENROLL result:", result)
+    const response = await sendSerialJSON({ cmd: "ENROLL", nid })
+    console.log("[API] ENROLL result:", response)
 
-    const lower = result.toLowerCase()
-    if (lower.includes('"status":"success"') && lower.includes('"action":"enroll"')) {
-      const json = JSON.parse(result)
-      const fingerId = json.id
-      console.log(`[API] Fingerprint enrolled at ID ${fingerId}`)
-
-      try {
-        await sendSerialCommand("STOP", (data) =>
-          data.toLowerCase().includes("stopped")
-        )
-      } catch {
-        console.warn("[API] STOP after ENROLL failed. Ignoring.")
-      }
-
-      return res.status(200).json({ success: true, message: result, fingerId })
+    if (response.status === "success" && response.action === "enroll") {
+      return res.status(200).json({
+        success: true,
+        nid: response.nid,
+        message: "Fingerprint enrollment successful"
+      })
     }
 
-    console.warn("[API] Enrollment failed:", result)
-    return res.status(400).json({ success: false, message: result })
+    return res.status(400).json({
+      success: false,
+      nid: response.nid || null,
+      message: response.message || "Enrollment failed"
+    })
   } catch (error) {
     console.error("[API] Enrollment error:", error.message)
     return res.status(500).json({ success: false, error: error.message })
   }
 }
 
+// DETECT
 const detectFingerprint = async (req, res) => {
   console.log("[API] /api/fingerprint/detect called")
   try {
-    const result = await sendSerialCommand("DETECT")
-    console.log("[API] DETECT result:", result)
+    const response = await sendSerialJSON({ cmd: "DETECT" })
+    console.log("[API] DETECT result:", response)
 
-    const lower = result.toLowerCase()
-    if (lower.includes('"status":"success"') && lower.includes('"action":"detect"')) {
-      const json = JSON.parse(result)
-      const fingerId = json.id
-      console.log(`[API] Fingerprint detected: ID ${fingerId}`)
-
-      try {
-        await sendSerialCommand("STOP", (data) =>
-          data.toLowerCase().includes("stopped")
-        )
-      } catch {
-        console.warn("[API] STOP after DETECT failed. Ignoring.")
-      }
-
-      if (fingerId == null) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Invalid fingerprint ID detected" })
-      }
-      return res.status(200).json({ success: true, message: result, fingerId })
+    if (response.status === "success" && response.action === "detect" && response.nid) {
+      return res.status(200).json({
+        success: true,
+        nid: response.nid,
+        message: "Fingerprint match successful"
+      })
     }
 
-    console.warn("[API] Detection failed:", result)
-    return res.status(400).json({ success: false, message: result })
+    return res.status(400).json({
+      success: false,
+      nid: response.nid || null,
+      message: response.message || "No match found"
+    })
   } catch (error) {
     console.error("[API] Detection error:", error.message)
     return res.status(500).json({ success: false, error: error.message })
   }
 }
 
+// Optional: Format DB (if your ESP32 firmware supports it)
 const formatFingerprintDatabase = async (req, res) => {
   console.log("[API] /api/fingerprint/format called")
   try {
-    const result = await sendSerialCommand(
-      "FORMAT",
-      (data) => data.toLowerCase().includes('"status":"success"')
-    )
-    console.log("[API] FORMAT result:", result)
-    return res
-      .status(200)
-      .json({ success: true, message: "Fingerprint database cleared." })
+    const response = await sendSerialJSON({ cmd: "FORMAT" })
+    console.log("[API] FORMAT result:", response)
+
+    if (response.status === "success") {
+      return res.status(200).json({ success: true, message: "Fingerprint database cleared" })
+    }
+
+    return res.status(400).json({ success: false, message: response.message || "Format failed" })
   } catch (error) {
     console.error("[API] Format error:", error.message)
-    return res.status(500).json({
-      success: false,
-      error: "Failed to clear fingerprint database. Please try again.",
-    })
+    return res.status(500).json({ success: false, error: error.message })
   }
 }
 

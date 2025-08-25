@@ -118,7 +118,8 @@ export function PublicDashboard() {
                   <div className="flex flex-col sm:items-end gap-1 min-w-[140px]">
                     <span className="text-sm font-semibold">Votes: {candidate.voteCount}</span>
                     <Badge variant="default">
-                      {candidate.isVerified ? "Registered" : "Pending"}
+
+                      {candidate.isVerified ? "Registered" : "Registerd"}
                     </Badge>
                   </div>
                 </div>

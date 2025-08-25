@@ -1,43 +1,45 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useWallet } from "@/components/ui/wallet-provider"
 import { CandidateList } from "@/components/Dashboard/CandidateList"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { useNavigate } from "react-router-dom"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2 } from "lucide-react"
-
-// Demo candidate data
-const demoCandidates = [
-  {
-    id: 1,
-    name: "Alice Johnson",
-    nationalId: "1234567890",
-    location: "New York",
-    voteCount: 42,
-    isVerified: true,
-  },
-  {
-    id: 2,
-    name: "Bob Smith",
-    nationalId: "9876543210",
-    location: "California",
-    voteCount: 37,
-    isVerified: false,
-  },
-]
+import { Loader2, AlertCircle, RefreshCw } from "lucide-react"
+import { useContract, Candidate } from "@/hooks/useContract"
 
 export function AdminDashboard() {
   const navigate = useNavigate()
   const { address } = useWallet()
   const { toast } = useToast()
-  const [candidates] = useState(demoCandidates)
-  const [isLoading] = useState(false)
-  const [error] = useState<string | null>(null)
+  const { getCandidates, isLoading: contractLoading, error: contractError, isInitialized } = useContract()
+  const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
   // DEMO: Face verification state - will be deleted later
   const [isVerifying, setIsVerifying] = useState(false)
   const [isFormatting, setIsFormatting] = useState(false)
 
+  const fetchCandidates = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await getCandidates()
+      setCandidates(data)
+    } catch (err) {
+      console.error("Error fetching candidates:", err)
+      setError("Failed to fetch candidates")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (isInitialized) {
+      fetchCandidates()
+    }
+  }, [isInitialized])
 
   const handleEndElection = async () => {
     // Demo: just navigate, no contract call
@@ -130,16 +132,32 @@ export function AdminDashboard() {
       setIsFormatting(false)
     }
   }
-  
 
-  if (isLoading) return <div>Loading...</div>
-  if (error) return <div>Error: {error}</div>
+  if (loading || contractLoading) return (
+    <div className="flex items-center justify-center py-8">
+      <Loader2 className="h-6 w-6 animate-spin mr-2" />
+      <span>Loading candidates...</span>
+    </div>
+  )
+
+  if (error || contractError) return (
+    <div className="flex items-center justify-center py-8 space-x-2 text-destructive">
+      <AlertCircle className="h-6 w-6" />
+      <span>{error || contractError?.message}</span>
+      <Button onClick={fetchCandidates} variant="outline">
+        <RefreshCw className="mr-2 h-4 w-4" /> Retry
+      </Button>
+    </div>
+  )
 
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row justify-between items-center">
           <CardTitle>Admin Dashboard</CardTitle>
+          <Button onClick={fetchCandidates} variant="outline" size="sm">
+            <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4">
@@ -152,7 +170,7 @@ export function AdminDashboard() {
                 <Button onClick={handleRegisterCandidate} variant="default">
                   Register Candidate
                 </Button>
-                <Button 
+                {/* <Button 
                   onClick={handleFormatFingerprint} 
                   variant="destructive" 
                   disabled={isFormatting}
@@ -165,32 +183,35 @@ export function AdminDashboard() {
                   ) : (
                     "Format Fingerprints"
                   )}
-                </Button>
+                </Button> */}
               </div>
             </div>
-              <CandidateList candidates={candidates} isLoading={false} />
-              <Button className="mt-4" onClick={handleEndElection}>
-                End Election
-              </Button>
-              {/* Demo button - will be deleted later */}
-              <Button 
-                className="mt-2" 
-                variant="outline"
-                onClick={handleVerifyFace}
-                disabled={isVerifying}
-              >
-                {isVerifying ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Verifying...
-                  </>
-                ) : (
-                  'Verify Face'
-                )}
-              </Button>
+
+            <CandidateList candidates={candidates} isLoading={false} />
+
+            {/* <Button className="mt-4" onClick={handleEndElection}>
+              End Election
+            </Button> */}
+
+            {/* Demo button - will be deleted later */}
+            {/* <Button 
+              className="mt-2" 
+              variant="outline"
+              onClick={handleVerifyFace}
+              disabled={isVerifying}
+            >
+              {isVerifying ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                'Verify Face'
+              )}
+            </Button> */}
           </div>
         </CardContent>
       </Card>
     </div>
   )
-} 
+}

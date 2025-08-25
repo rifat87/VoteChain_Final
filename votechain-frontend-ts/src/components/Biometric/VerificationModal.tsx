@@ -56,25 +56,16 @@ export function VerificationModal({ open, onClose, onVerified }: VerificationMod
       });
 
       const detectData = await detectRes.json();
-      if (!detectRes.ok || !detectData.success || !detectData.fingerId) {
+      if (!detectRes.ok || !detectData.success || !detectData.nid) {
         throw new Error(detectData.message || "Fingerprint detection failed");
-      }
-
-      const fingerId = detectData.fingerId;
-      console.log("[UI] Detected fingerprint ID:", fingerId);
-
-      const voterRes = await fetch(`http://localhost:5000/api/voters/by-fingerprint/${fingerId}`);
-      const voterData = await voterRes.json();
-      if (!voterRes.ok || !voterData.voter?.nationalId) {
-        throw new Error("No matching voter found for fingerprint ID: " + fingerId);
       }
 
       toast({
         title: "✅ Fingerprint Verified",
-        description: `NID: ${voterData.voter.nationalId}`,
+        description: `NID: ${detectData.nid}`,
       });
 
-      onVerified(voterData.voter.nationalId);
+      onVerified(detectData.nid);
       onClose();
     } catch (err) {
       console.error("Fingerprint verification error:", err);

@@ -7,7 +7,15 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
-import { Vote, CheckCircle2, User, MapPin, Loader2, AlertCircle, RefreshCw } from "lucide-react"
+import { 
+  Vote, 
+  CheckCircle2, 
+  User, 
+  MapPin, 
+  Loader2, 
+  AlertCircle, 
+  RefreshCw 
+} from "lucide-react"
 import { VerificationModal } from "@/components/Biometric/VerificationModal"
 
 export function VoteCasting() {
@@ -20,15 +28,15 @@ export function VoteCasting() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
-  // Voting state
-  const [selectedCandidate, setSelectedCandidate] = useState<number | null>(null)
+  // Voting state (now storing candidateNID instead of number ID)
+  const [selectedCandidate, setSelectedCandidate] = useState<string | null>(null)
   const [isVoting, setIsVoting] = useState(false)
   const [hasVoted, setHasVoted] = useState(false)
-  const [votedCandidateId, setVotedCandidateId] = useState<number | null>(null)
+  const [votedCandidateId, setVotedCandidateId] = useState<string | null>(null)
 
   // Biometric verification modal
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [pendingCandidate, setPendingCandidate] = useState<number | null>(null)
+  const [pendingCandidate, setPendingCandidate] = useState<string | null>(null)
 
   // Fetch candidates from blockchain
   useEffect(() => {
@@ -70,7 +78,7 @@ export function VoteCasting() {
   // Calculate total votes for percentage
   const totalVotes = candidates.reduce((sum, candidate) => sum + (candidate.voteCount || 0), 0)
 
-  const handleVote = (candidateId: number) => {
+  const handleVote = (candidateNid: string) => {
     if (!isConnected) {
       toast({
         title: "Wallet Not Connected",
@@ -80,27 +88,28 @@ export function VoteCasting() {
       return
     }
 
-    setPendingCandidate(candidateId)
+    setPendingCandidate(candidateNid)
     setIsModalOpen(true)
   }
 
   const handleVerified = async (voterNid: string) => {
     if (!pendingCandidate) return
 
-    const candidateId = pendingCandidate
+    const candidateNid = pendingCandidate
 
     try {
       setIsVoting(true)
-      setSelectedCandidate(candidateId)
+      setSelectedCandidate(candidateNid)
 
-      await castVote(candidateId, voterNid)
+      // ✅ Call contract with (candidateNID, voterNID)
+      await castVote(candidateNid, voterNid)
 
       setHasVoted(true)
-      setVotedCandidateId(candidateId)
+      setVotedCandidateId(candidateNid)
 
       toast({
         title: "Vote Cast Successfully!",
-        description: `Your vote for ${candidates.find(c => c.id === candidateId)?.name} has been recorded.`,
+        description: `Your vote for ${candidates.find(c => c.nationalId === candidateNid)?.name} has been recorded.`,
       })
     } catch (error) {
       console.error("Error casting vote:", error)
@@ -121,7 +130,6 @@ export function VoteCasting() {
     if (isInitialized) {
       setError(null)
       setLoading(true)
-      // Trigger useEffect by updating a dependency
       getCandidates().then(data => {
         setCandidates(data)
         setLoading(false)
@@ -196,7 +204,7 @@ export function VoteCasting() {
 
   // Success state after voting
   if (hasVoted) {
-    const votedCandidate = candidates.find(c => c.id === votedCandidateId)
+    const votedCandidate = candidates.find(c => c.nationalId === votedCandidateId)
     return (
       <>
       <VerificationModal
@@ -267,10 +275,10 @@ export function VoteCasting() {
         <div className="grid gap-6">
           {candidates.map((candidate) => {
             const percentage = totalVotes > 0 ? (candidate.voteCount / totalVotes) * 100 : 0
-            const isCurrentlyVoting = isVoting && selectedCandidate === candidate.id
+            const isCurrentlyVoting = isVoting && selectedCandidate === candidate.nationalId
             
             return (
-              <Card key={candidate.id} className="transition-all hover:shadow-md">
+              <Card key={candidate.nationalId} className="transition-all hover:shadow-md">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="space-y-2">
@@ -302,7 +310,7 @@ export function VoteCasting() {
                   </div>
 
                   <Button
-                    onClick={() => handleVote(candidate.id)}
+                    onClick={() => handleVote(candidate.nationalId)} // ✅ use NID
                     disabled={isVoting}
                     className="w-full"
                     size="lg"
@@ -337,4 +345,4 @@ export function VoteCasting() {
     </div>
     </>
   )
-} 
+}

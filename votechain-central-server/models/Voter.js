@@ -3,121 +3,72 @@ import mongoose from 'mongoose';
 const voterSchema = new mongoose.Schema({
   nationalId: {
     type: String,
-    required: true,
+    required: [true, 'National ID is required'],
     unique: true,
-    trim: true
+    trim: true,
+    match: [/^\d{10}$/, 'National ID must be exactly 10 digits'] // ✅ enforce 10 digits
   },
   name: {
     type: String,
-    required: true,
-    trim: true
-  },
-  fathersName: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  mothersName: {
-    type: String,
-    required: true,
-    trim: true
+    required: [true, 'Name is required'],
+    trim: true,
+    minlength: [3, 'Name must be at least 3 characters long'],
+    maxlength: [50, 'Name cannot exceed 50 characters'],
+    match: [/^[A-Za-z ]+$/, 'Name should contain only letters and spaces'] // ✅ letters & spaces only
   },
   dateOfBirth: {
     type: Date,
-    required: true
-  },
-  bloodGroup: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  postOffice: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  postCode: {
-    type: String,
-    required: true,
-    trim: true
+    required: [true, 'Date of birth is required'],
+    validate: {
+      validator: function(value) {
+        if (!value) return false;
+        const today = new Date();
+        let age = today.getFullYear() - value.getFullYear();
+        const m = today.getMonth() - value.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < value.getDate())) {
+          age--;
+        }
+        return age >= 18 && age <= 120; // ✅ enforce 18–120 years
+      },
+      message: 'Voter must be between 18 and 120 years old'
+    }
   },
   location: {
     type: String,
-    required: true,
-    trim: true
-  },
-  faceId: {
-    type: String,
-    required: [true, 'Face ID is required'],
+    required: [true, 'Location is required'],
     trim: true,
-    minlength: [32, 'Face ID must be at least 32 characters long']
-  },
-  fingerprintHash: {
-    type: String,
-    trim: true,
-    default: null
-  },
-  walletAddress: {
-    type: String,
-    unique: true,
-    sparse: true,
-    trim: true,
-    validate: {
-      validator: function(v) {
-        return !v || /^0x[a-fA-F0-9]{40}$/.test(v);
-      },
-      message: props => `${props.value} is not a valid Ethereum address!`
-    }
-  },
-  blockchainId: {
-    type: String,
-    unique: true,
-    sparse: true,
-    trim: true,
-    validate: {
-      validator: function(v) {
-        return !v || /^0x[a-fA-F0-9]{64}$/.test(v);
-      },
-      message: props => `${props.value} is not a valid blockchain transaction hash!`
-    }
-  },
-  isRegistered: {
-    type: Boolean,
-    default: false
-  },
-  isVerified: {
-    type: Boolean,
-    default: false
-  },
-  verificationStatus: {
-    type: String,
-    enum: ['pending', 'approved', 'rejected'],
-    default: 'pending'
-  },
-  verificationNotes: {
-    type: String,
-    trim: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now
+    minlength: [2, 'Location must be at least 2 characters long'],
+    maxlength: [100, 'Location cannot exceed 100 characters'],
+    match: [/^[A-Za-z ,.-]+$/, 'Location can only contain letters, spaces, commas, hyphens, and periods'] // ✅ safe regex
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  collection: 'voterCollection'
 });
 
 // Indexes
 voterSchema.index({ nationalId: 1 });
-voterSchema.index({ walletAddress: 1 });
-voterSchema.index({ blockchainId: 1 });
-voterSchema.index({ isRegistered: 1 });
-voterSchema.index({ isVerified: 1 });
-voterSchema.index({ verificationStatus: 1 });
+voterSchema.index({ name: 'text', location: 'text' });
 
-const Voter = mongoose.model('Voter', voterSchema, 'voterCollection');
+// Pre-save middleware (auto-trim strings)
+voterSchema.pre('save', function(next) {
+  Object.keys(this.schema.paths).forEach(key => {
+    if (this.schema.paths[key].instance === 'String' && this[key]) {
+      this[key] = this[key].trim();
+    }
+  });
+  next();
+});
 
-export default Voter; 
+// Error handling middleware for duplicate NID
+voterSchema.post('save', function(error, doc, next) {
+  if (error.name === 'MongoError' && error.code === 11000) {
+    next(new Error('A voter with this National ID already exists'));
+  } else {
+    next(error);
+  }
+});
+
+const Voter = mongoose.model('Voter', voterSchema);
+
+export default Voter;

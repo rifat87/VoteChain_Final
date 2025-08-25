@@ -16,6 +16,9 @@ function Calendar({
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      captionLayout="dropdown-buttons" // ✅ Enables month/year dropdowns
+      fromYear={1900}
+      toYear={new Date().getFullYear()}
       className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
@@ -55,6 +58,12 @@ function Calendar({
         day_range_middle:
           "aria-selected:bg-accent aria-selected:text-accent-foreground",
         day_hidden: "invisible",
+
+        // ✅ New styles for dropdowns
+        caption_dropdowns: "flex space-x-2 items-center",
+        dropdown:
+          "bg-background border border-input rounded-md px-2 py-1 text-sm text-foreground",
+
         ...classNames,
       }}
       components={{
