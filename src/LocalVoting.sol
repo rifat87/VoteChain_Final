@@ -6,7 +6,7 @@ contract LocalVoting {
     bool public electionEnded;
 
     struct Candidate {
-        string nationalId;   // Unique identifier
+        string nationalId;  
         string name;
         string location;
         uint age;
@@ -15,21 +15,21 @@ contract LocalVoting {
     }
 
     struct Voter {
-        string nationalId;   // Unique identifier
+        string nationalId;   
         string name;
         string location;
-        string birthDate;    // Stored as string (YYYY-MM-DD)
+        string birthDate;    
     }
 
-    // Storage
-    mapping(string => Candidate) public candidates;   // candidateNID => Candidate
-    mapping(string => Voter) public voters;           // voterNID => Voter
-    string[] public candidateIds;                     // to retrieve all candidates
-    string[] public voterIds;                         // to retrieve all voters
+   
+    mapping(string => Candidate) public candidates;   
+    mapping(string => Voter) public voters;           
+    string[] public candidateIds;                     
+    string[] public voterIds;                         
 
-    mapping(string => bool) public nationalIdExists;       // for candidates
-    mapping(string => bool) public voterNationalIdExists;  // for voters
-    mapping(string => bool) public hasVoted;               // track voter NIDs
+    mapping(string => bool) public nationalIdExists;       
+    mapping(string => bool) public voterNationalIdExists;  
+    mapping(string => bool) public hasVoted;               
 
     // Events
     event CandidateRegistered(
