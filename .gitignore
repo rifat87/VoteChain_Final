@@ -10,6 +10,8 @@ out/
 # Docs
 docs/
 
+notepad .gitignore
+
 # Dotenv file
 .env
 node_modules
@@ -62,3 +64,17 @@ __pycache__/
 # Large generated stuff
 *.log
 *.tmp
+
+# Python virtual environments
+venv/
+myenv/
+.env/
+.venv/
+
+# Face recognition model zips / dumps
+votechain-face-recognition/NewModelZip/
+*.zip
+
+# Python build / dll junk
+*.dll
+*.pyd
