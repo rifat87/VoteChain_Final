@@ -24,3 +24,41 @@ myenv/
 
 # Ignore DLLs anywhere
 *.dll
+
+
+# dependencies
+node_modules/
+
+# build outputs
+dist/
+build/
+out/
+.cache/
+cache/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# environment files
+.env
+.env.local
+.env.*.local
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Foundry / Solidity artifacts (if applicable)
+artifacts/
+cache/
+
+# Python junk (if used)
+__pycache__/
+*.pyc
+
+# Large generated stuff
+*.log
+*.tmp
