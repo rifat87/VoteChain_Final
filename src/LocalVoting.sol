@@ -1,51 +1,39 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-contract LocalVoting { 
+contract LocalVoting {
     address public electionCommission;
     bool public electionEnded;
 
     struct Candidate {
-        string nationalId;  
+        string nationalId;
         string name;
         string location;
-        uint age;
+        uint256 age;
         string party;
-        uint voteCount;
+        uint256 voteCount;
     }
 
     struct Voter {
-        string nationalId;   
+        string nationalId;
         string name;
         string location;
-        string birthDate;    
+        string birthDate;
     }
 
-   
-    mapping(string => Candidate) public candidates;   
-    mapping(string => Voter) public voters;           
-    string[] public candidateIds;                     
-    string[] public voterIds;                         
+    mapping(string => Candidate) public candidates;
+    mapping(string => Voter) public voters;
+    string[] public candidateIds;
+    string[] public voterIds;
 
-    mapping(string => bool) public nationalIdExists;       
-    mapping(string => bool) public voterNationalIdExists;  
-    mapping(string => bool) public hasVoted;               
+    mapping(string => bool) public nationalIdExists;
+    mapping(string => bool) public voterNationalIdExists;
+    mapping(string => bool) public hasVoted;
 
     // Events
-    event CandidateRegistered(
-        string nationalId,
-        string name,
-        string party,
-        uint age,
-        uint256 timestamp
-    );
+    event CandidateRegistered(string nationalId, string name, string party, uint256 age, uint256 timestamp);
 
-    event VoterRegistered(
-        string nationalId,
-        string name,
-        string birthDate,
-        uint256 timestamp
-    );
+    event VoterRegistered(string nationalId, string name, string birthDate, uint256 timestamp);
 
     event VoteCast(string voterNID, string candidateNID, uint256 timestamp);
 
@@ -64,7 +52,7 @@ contract LocalVoting {
         string memory _name,
         string memory _nationalId,
         string memory _location,
-        uint _age,
+        uint256 _age,
         string memory _party
     ) public onlyCommission {
         require(!nationalIdExists[_nationalId], "Candidate NID already registered");
@@ -94,12 +82,7 @@ contract LocalVoting {
     ) public onlyCommission {
         require(!voterNationalIdExists[_nationalId], "Voter NID already registered");
 
-        Voter memory v = Voter({
-            nationalId: _nationalId,
-            name: _name,
-            location: _location,
-            birthDate: _birthDate
-        });
+        Voter memory v = Voter({nationalId: _nationalId, name: _name, location: _location, birthDate: _birthDate});
 
         voters[_nationalId] = v;
         voterNationalIdExists[_nationalId] = true;
@@ -134,7 +117,7 @@ contract LocalVoting {
     // Get all candidates
     function getCandidates() public view returns (Candidate[] memory) {
         Candidate[] memory allCandidates = new Candidate[](candidateIds.length);
-        for (uint i = 0; i < candidateIds.length; i++) {
+        for (uint256 i = 0; i < candidateIds.length; i++) {
             allCandidates[i] = candidates[candidateIds[i]];
         }
         return allCandidates;
