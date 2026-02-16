@@ -211,7 +211,7 @@ For parts of your data (e.g., additional voter/candidate profiles, UI settings, 
 Maintain the on-chain data for critical election functions while leveraging the centralized server for non-critical or heavy data.
 ```
 
-Here is a flowchart:
+## Here is a flowchart:
 ```
                     ┌─────────────────────────────────┐
                     │      User Visits Website        │
@@ -479,15 +479,6 @@ sequenceDiagram
 ```
 
 
-nationalId: {
-    type: String,
-    required: [true, 'National ID is required'],
-    unique: true,
-    trim: true,
-    validate: {
-      validator: function(v) {
-        return /^\d{10}$/.test(v);
-      },
-      message: props => `${props.value} is not a valid national ID! Must be 10 digits.`
-    }
-  },
+## Previous Development Repository
+Earlier development history and contributions can be found here:
+https://github.com/rifat87/VoteChain
