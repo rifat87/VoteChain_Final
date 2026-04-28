@@ -31,11 +31,11 @@ contract LocalVoting {
     mapping(string => bool) public hasVoted;
 
     // Events
-    event CandidateRegistered(string nationalId, string name, string party, uint256 age, uint256 timestamp);
+    // event CandidateRegistered(string nationalId, string name, string party, uint256 age, uint256 timestamp);
 
-    event VoterRegistered(string nationalId, string name, string birthDate, uint256 timestamp);
+    // event VoterRegistered(string nationalId, string name, string birthDate, uint256 timestamp);
 
-    event VoteCast(string voterNID, string candidateNID, uint256 timestamp);
+    // event VoteCast(string voterNID, string candidateNID, uint256 timestamp);
 
     constructor() {
         electionCommission = msg.sender;
@@ -70,7 +70,7 @@ contract LocalVoting {
         nationalIdExists[_nationalId] = true;
         candidateIds.push(_nationalId);
 
-        emit CandidateRegistered(_nationalId, _name, _party, _age, block.timestamp);
+        // emit CandidateRegistered(_nationalId, _name, _party, _age, block.timestamp);
     }
 
     // Voter registration
@@ -88,7 +88,7 @@ contract LocalVoting {
         voterNationalIdExists[_nationalId] = true;
         voterIds.push(_nationalId);
 
-        emit VoterRegistered(_nationalId, _name, _birthDate, block.timestamp);
+        // emit VoterRegistered(_nationalId, _name, _birthDate, block.timestamp);
     }
 
     // Cast vote
@@ -100,7 +100,7 @@ contract LocalVoting {
         hasVoted[_voterNID] = true;
         candidates[_candidateNID].voteCount++;
 
-        emit VoteCast(_voterNID, _candidateNID, block.timestamp);
+        // emit VoteCast(_voterNID, _candidateNID, block.timestamp);
     }
 
     // End election
